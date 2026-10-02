@@ -48,6 +48,9 @@ class Orchestrator:
         # None = ещё не проверяли, True/False = последнее известное состояние Ollama.
         # Нужно, чтобы уведомлять в Telegram только при СМЕНЕ состояния, а не на каждом цикле.
         self._ollama_alive = None
+        # Агент на LangGraph (граф с паузой на решение в Telegram). None — старый линейный режим.
+        self.agent = None
+        self._close_agent = lambda: None
         logger.info("Orchestrator инициализирован")
 
     async def check_ollama_and_alert(self) -> bool:
@@ -140,6 +143,24 @@ class Orchestrator:
         else:
             logger.info(f"Вакансия {vacancy_id} уже есть в базе со статусом NEW (прошлая обработка не завершилась), оцениваю заново")
 
+        if self.agent is not None:
+            # Граф: оценка → (пропуск | черновик в Telegram → пауза до решения человека)
+            logger.info(f"Вакансия {vacancy_id} передана агенту...")
+            outcome = await self.agent.start(detailed_data)
+            labels = {"waiting": "черновик в Telegram, ждёт решения", "skipped_low_score": "пропущена (низкая оценка)",
+                      "error": "LLM не ответила, оставляю статус NEW и повторю в следующем цикле"}
+            logger.info(f"Вакансия {vacancy_id}: {labels.get(outcome, outcome)}")
+            if outcome == "error":
+                return
+        else:
+            await self._process_linear(vacancy_id, detailed_data)
+
+        pause = random.uniform(5.0, 15.0)
+        logger.info(f"Пауза {pause:.1f} сек перед следующей вакансией...")
+        await asyncio.sleep(pause)
+
+    async def _process_linear(self, vacancy_id: str, detailed_data: dict):
+        """Старый режим без агента: оценка → уведомление или пропуск."""
         logger.info(f"Отправка вакансии {vacancy_id} на оценку LLM...")
         llm_result = await evaluate_and_draft(detailed_data)
         if llm_result.get("error"):
@@ -162,10 +183,6 @@ class Orchestrator:
             logger.info(f"Оценка {llm_result['relevance_score']} < порога {settings.min_relevance_score}. Пропускаем.")
             await update_vacancy_status(vacancy_id=vacancy_id, status=VacancyStatus.SKIPPED)
             logger.info(f"Вакансия {vacancy_id} пропущена. Статус: SKIPPED")
-        
-        pause = random.uniform(5.0, 15.0)
-        logger.info(f"Пауза {pause:.1f} сек перед следующей вакансией...")
-        await asyncio.sleep(pause)
 
     async def search_cycle(self):
         """Один цикл поиска новых вакансий"""
@@ -258,6 +275,17 @@ class Orchestrator:
 
         self.notifier.set_browser_worker(self.worker)
 
+        if settings.agent_enabled:
+            try:
+                from agent.wiring import create_agent
+                self.agent, self._close_agent = await create_agent(self.notifier)
+                self.notifier.set_agent(self.agent)
+                logger.info("Агент LangGraph запущен: под черновиками будут кнопки «Подходит / Переписать / Пропустить»")
+            except ImportError as e:
+                logger.warning(f"LangGraph не установлен ({e}) — работаю в старом режиме без кнопок")
+            except Exception as e:
+                logger.error(f"Агент не запустился ({e}) — работаю в старом режиме без кнопок")
+
         # Long polling у одного токена может вести только один процесс, иначе Telegram отвечает Conflict.
         # Отправлять уведомления можно без polling, поэтому Habr-процесс его не запускает
         # (единственное, что теряется там — ответ на /start).
@@ -320,6 +348,11 @@ class Orchestrator:
                 except asyncio.CancelledError:
                     pass
             
+            try:
+                self._close_agent()
+            except Exception as e:
+                logger.warning(f"Ошибка при закрытии хранилища агента: {e}")
+
             logger.info("Закрытие браузера...")
             try:
                 await self.worker.close()

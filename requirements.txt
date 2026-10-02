@@ -12,3 +12,8 @@ asyncpg>=0.29.0
 # RAG: эмбеддинги и реранкер. torch с поддержкой видеокарты ставится отдельно:
 # pip install torch --index-url https://download.pytorch.org/whl/cu128
 sentence-transformers>=3.0.0
+# Агент: граф с паузой на решение человека и состояние в Postgres
+langgraph>=0.4.0
+langgraph-checkpoint-postgres>=2.0.0
+psycopg[binary]>=3.2.0
+psycopg-pool>=3.2.0

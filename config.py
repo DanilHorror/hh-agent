@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     # Postgres из docker-compose.yml: postgresql+asyncpg://hh:hh_local_dev@localhost:5433/hh_agent
     database_url: str = Field(default="", alias="DATABASE_URL")
 
+    # Агент на LangGraph: кнопки «Подходит / Переписать / Пропустить» под черновиками.
+    # false — старый режим (уведомление со ссылкой, без кнопок).
+    agent_enabled: bool = Field(default=True, alias="AGENT_ENABLED")
+
     # RAG в Telegram-боте (/ask): на чём считать эмбеддинги и реранкер. По умолчанию процессор:
     # видеокарту в это время занимает Ollama, и две нагрузки на 8 ГБ видеопамяти мешают друг другу.
     # cuda — на видеокарте (быстрее, если памяти хватает).

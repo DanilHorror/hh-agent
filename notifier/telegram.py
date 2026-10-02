@@ -2,9 +2,9 @@ import asyncio
 import html
 import logging
 from datetime import datetime, timezone
-from aiogram import Bot, Dispatcher, types
+from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import Command, CommandObject
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, LinkPreviewOptions
+from aiogram.types import ForceReply, InlineKeyboardMarkup, InlineKeyboardButton, LinkPreviewOptions
 from config import settings
 from database import update_vacancy_status, VacancyStatus
 
@@ -26,8 +26,14 @@ class TelegramNotifier:
         self.is_running = False
         self.worker = None
         self._ask_lock = asyncio.Lock()  # /ask обрабатываем по одному: модели и Ollama общие
+        self.agent = None                # VacancyAgent: кнопки под черновиками возобновляют его граф
+        self._awaiting_feedback: dict[int, str] = {}  # chat_id → вакансия, к которой ждём замечание
         self._setup_handlers()
         logger.info(f"TelegramNotifier инициализирован. Chat ID(ы): {self.chat_ids}")
+
+    def set_agent(self, agent):
+        """Агент, которому передаются решения по кнопкам «Подходит / Переписать / Пропустить»."""
+        self.agent = agent
 
     def set_browser_worker(self, worker):
         """Устанавливаем ссылку на браузер для парсинга вакансий"""
@@ -74,6 +80,61 @@ class TelegramNotifier:
             async with self._ask_lock:
                 await self._answer_question(message, question)
 
+        @self.dp.callback_query(F.data.startswith("ag:"))
+        async def on_decision(callback: types.CallbackQuery):
+            """Кнопка под черновиком: ag:<a|r|s>:<vacancy_id>."""
+            if callback.message is None or callback.message.chat.id not in self.chat_ids:
+                await callback.answer()
+                return
+            _, code, vacancy_id = callback.data.split(":", 2)
+            if self.agent is None:
+                await callback.answer("Агент не запущен", show_alert=True)
+                return
+            if code == "r":
+                self._awaiting_feedback[callback.message.chat.id] = vacancy_id
+                await callback.answer()
+                await callback.message.answer(
+                    "✏️ Что поправить в письме? Ответьте одним сообщением, например: "
+                    "«короче, упомяни опыт с Playwright».",
+                    reply_markup=ForceReply(input_field_placeholder="Что поправить в письме"))
+                return
+            action = {"a": "approve", "s": "skip"}.get(code)
+            if action is None:
+                await callback.answer()
+                return
+            await callback.answer("Принято")
+            outcome = await self.agent.resume(vacancy_id, action)
+            if outcome == "not_waiting":
+                await callback.message.answer("По этой вакансии решение уже принято (или она пришла до запуска агента).")
+                return
+            # Убираем кнопки решения, оставляем ссылку на вакансию
+            link_rows = [row for row in (callback.message.reply_markup.inline_keyboard
+                                         if callback.message.reply_markup else []) if row and row[0].url]
+            try:
+                await callback.message.edit_reply_markup(
+                    reply_markup=InlineKeyboardMarkup(inline_keyboard=link_rows) if link_rows else None)
+            except Exception as e:  # сообщение могло быть изменено или удалено
+                logger.warning(f"Не удалось убрать кнопки: {e}")
+            note = "✅ Отмечено как подходящая — откликнитесь по ссылке выше." if action == "approve" \
+                else "❌ Вакансия пропущена."
+            await callback.message.reply(note)
+
+        @self.dp.message(F.text & ~F.text.startswith("/"))
+        async def on_text(message: types.Message):
+            """Замечание к письму после кнопки «Переписать»."""
+            vacancy_id = self._awaiting_feedback.pop(message.chat.id, None)
+            if vacancy_id is None or self.agent is None:
+                return
+            await message.answer("✍️ Переписываю письмо...")
+            try:
+                outcome = await self.agent.resume(vacancy_id, "rewrite", message.text)
+            except Exception as e:
+                logger.error(f"Переписать письмо не удалось: {e}")
+                await message.answer(f"⚠️ Не получилось переписать: {html.escape(str(e))[:300]}")
+                return
+            if outcome == "not_waiting":
+                await message.answer("По этой вакансии решение уже принято (или она пришла до запуска агента).")
+
         logger.info("Все обработчики настроены")
 
     async def _answer_question(self, message, question: str):
@@ -103,8 +164,10 @@ class TelegramNotifier:
         await message.answer("\n".join(lines), parse_mode="HTML",
                              link_preview_options=LinkPreviewOptions(is_disabled=True))
 
-    async def send_for_approval(self, vacancy_id: str, vacancy_data: dict, llm_result: dict):
-        """Отправка вакансии в Telegram с сопроводительным письмом и кнопкой"""
+    async def send_for_approval(self, vacancy_id: str, vacancy_data: dict, llm_result: dict, revision: int = 0):
+        """Отправка вакансии в Telegram с сопроводительным письмом и кнопками решения.
+
+        revision > 0 — это переписанная по замечанию версия письма."""
         logger.info(f"Отправка вакансии {vacancy_id} в Telegram...")
 
         url = vacancy_data.get('url', '#')
@@ -112,8 +175,10 @@ class TelegramNotifier:
         source = vacancy_data.get('source') or ('Habr Career' if str(vacancy_id).startswith('habr_') else 'hh.ru')
 
         # Одно сообщение: карточка вакансии + письмо код-блоком (тап = копирование)
+        header = (f"✏️ <b>Письмо, версия {revision + 1}</b>" if revision
+                  else " <b>Новая релевантная вакансия!</b>")
         text = (
-            f" <b>Новая релевантная вакансия!</b> <i>({html.escape(source)})</i>\n\n"
+            f"{header} <i>({html.escape(source)})</i>\n\n"
             f" <b>{html.escape(str(vacancy_data['title']))}</b>\n"
             f"🏢 {html.escape(str(vacancy_data['company']))}\n\n"
             f"🧠 <b>Оценка релевантности:</b> {llm_result['relevance_score']}/100\n"
@@ -124,9 +189,15 @@ class TelegramNotifier:
         )
 
         # Кнопка с прямой ссылкой на вакансию
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text=f"🔗 Перейти к вакансии на {source}", url=url)]
-        ])
+        rows = []
+        if self.agent is not None:
+            rows.append([
+                InlineKeyboardButton(text="✅ Подходит", callback_data=f"ag:a:{vacancy_id}"),
+                InlineKeyboardButton(text="✏️ Переписать", callback_data=f"ag:r:{vacancy_id}"),
+                InlineKeyboardButton(text="❌ Пропустить", callback_data=f"ag:s:{vacancy_id}"),
+            ])
+        rows.append([InlineKeyboardButton(text=f"🔗 Перейти к вакансии на {source}", url=url)])
+        keyboard = InlineKeyboardMarkup(inline_keyboard=rows)
 
         for chat_id in self.chat_ids:
             try:
@@ -135,7 +206,7 @@ class TelegramNotifier:
                     text=text,
                     parse_mode="HTML",
                     reply_markup=keyboard,
-                    disable_web_page_preview=False
+                    link_preview_options=LinkPreviewOptions(is_disabled=False),
                 )
                 logger.info(f"✅ Вакансия {vacancy_id} отправлена в Telegram (chat_id={chat_id})")
             except Exception as e:

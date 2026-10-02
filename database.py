@@ -67,6 +67,22 @@ class VacancyKeywords(Base):
     model = Column(String)            # какой моделью получено
     extracted_at = Column(DateTime, default=utcnow)
 
+class AgentDecision(Base):
+    """Решение человека по черновику агента: принять, переписать или пропустить.
+
+    Из этих записей считаются метрики агента (scripts/agent_metrics.py): доля писем,
+    принятых без правок, и совпадение оценки модели с решением человека."""
+    __tablename__ = "agent_decisions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    vacancy_id = Column(String, index=True, nullable=False)
+    decision = Column(String(16), nullable=False)       # approve | rewrite | skip
+    feedback = Column(Text)                              # замечание к письму (для rewrite)
+    relevance_score = Column(Float)                      # оценка модели на момент решения
+    revision = Column(Integer, default=0)                # какая по счёту версия письма
+    created_at = Column(DateTime, default=utcnow)
+
+
 # Движок и сессии. Адрес — DATABASE_URL из .env; без него файл SQLite hh_agent.db, как раньше.
 DATABASE_URL = database_url()
 IS_SQLITE = DATABASE_URL.startswith("sqlite")
@@ -235,3 +251,19 @@ async def get_llm_keywords(model_prefix: str = None) -> dict:
     if model_prefix:
         rows = [r for r in rows if (r.model or "").startswith(model_prefix)]
     return {r.vacancy_id: (json.loads(r.keywords_json) if r.keywords_json else []) for r in rows}
+
+
+# ---------- Агент: решения человека ----------
+
+async def save_agent_decision(vacancy_id: str, decision: str, feedback: str = "",
+                              relevance_score: float = None, revision: int = 0):
+    async with async_session() as session:
+        session.add(AgentDecision(vacancy_id=vacancy_id, decision=decision, feedback=feedback or None,
+                                  relevance_score=relevance_score, revision=revision))
+        await session.commit()
+
+
+async def get_agent_decisions() -> list:
+    async with async_session() as session:
+        result = await session.execute(select(AgentDecision).order_by(AgentDecision.id))
+        return result.scalars().all()
