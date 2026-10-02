@@ -242,3 +242,27 @@ def test_short_answer_uses_provider_and_strips_quotes(fake_provider):
     fake_provider('"Да, работал с Docker два года."')
     answer = run(brain.generate_short_answer("Работали с Docker?", fallback="—"))
     assert answer == "Да, работал с Docker два года."
+
+
+# --- межпроцессный замок Ollama ----------------------------------------------------------
+
+def test_lock_left_by_dead_process_is_taken_over(tmp_path, monkeypatch):
+    from llm.providers import ollama_provider
+
+    lock_path = tmp_path / "ollama.lock"
+    lock_path.write_text("999999")  # PID процесса, которого нет
+    monkeypatch.setattr(ollama_provider, "OLLAMA_LOCK_PATH", str(lock_path))
+    monkeypatch.setattr(ollama_provider, "_pid_alive", lambda pid: False)
+
+    async def take():
+        async with ollama_provider.ollama_lock(stale_after=3600):
+            return lock_path.read_text()
+
+    assert run(asyncio.wait_for(take(), timeout=5)) == str(os.getpid())
+    assert not lock_path.exists()
+
+
+def test_own_process_is_alive():
+    from llm.providers import ollama_provider
+
+    assert ollama_provider._pid_alive(os.getpid()) is True

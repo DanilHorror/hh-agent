@@ -19,6 +19,42 @@ OLLAMA_LOCK_PATH = os.path.join(
 )
 
 
+def _pid_alive(pid: int) -> bool:
+    """Жив ли процесс с таким PID. На Windows — через WinAPI: os.kill(pid, 0) там означает Ctrl+C."""
+    if pid <= 0:
+        return False
+    if os.name == "nt":
+        import ctypes
+
+        kernel32 = ctypes.windll.kernel32
+        handle = kernel32.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+        if not handle:
+            return kernel32.GetLastError() == 5  # нет доступа — процесс есть, но чужой
+        try:
+            code = ctypes.c_ulong()
+            kernel32.GetExitCodeProcess(handle, ctypes.byref(code))
+            return code.value == 259  # STILL_ACTIVE
+        finally:
+            kernel32.CloseHandle(handle)
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+
+
+def _lock_owner_dead() -> bool:
+    """Замок оставил процесс, которого уже нет (окно бота закрыли во время запроса к модели)."""
+    try:
+        with open(OLLAMA_LOCK_PATH, encoding="utf-8") as f:
+            pid = int(f.read().strip() or 0)
+    except (OSError, ValueError):
+        return False
+    return pid != os.getpid() and not _pid_alive(pid)
+
+
 @contextlib.asynccontextmanager
 async def ollama_lock(stale_after: float):
     """Межпроцессный замок на файле. Замок старше stale_after секунд считается брошенным (процесс убили)."""
@@ -30,7 +66,7 @@ async def ollama_lock(stale_after: float):
             os.write(fd, str(os.getpid()).encode())
         except FileExistsError:
             try:
-                if time.time() - os.path.getmtime(OLLAMA_LOCK_PATH) > stale_after:
+                if _lock_owner_dead() or time.time() - os.path.getmtime(OLLAMA_LOCK_PATH) > stale_after:
                     os.remove(OLLAMA_LOCK_PATH)
                     continue
             except OSError:

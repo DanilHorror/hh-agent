@@ -1,12 +1,20 @@
+import asyncio
 import html
 import logging
+from datetime import datetime, timezone
 from aiogram import Bot, Dispatcher, types
-from aiogram.filters import Command
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.filters import Command, CommandObject
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, LinkPreviewOptions
 from config import settings
 from database import update_vacancy_status, VacancyStatus
 
 logger = logging.getLogger('TelegramNotifier')
+
+# Сколько ждать ответа на /ask: загрузка моделей + поиск + очередь к Ollama (бот в это время может
+# оценивать вакансию) + генерация
+ASK_TIMEOUT = 300
+# Вопросы старше этого (пришли, пока бот был выключен) пропускаем
+ASK_MAX_AGE = 120
 
 class TelegramNotifier:
     def __init__(self):
@@ -17,6 +25,7 @@ class TelegramNotifier:
         self.dp = Dispatcher()
         self.is_running = False
         self.worker = None
+        self._ask_lock = asyncio.Lock()  # /ask обрабатываем по одному: модели и Ollama общие
         self._setup_handlers()
         logger.info(f"TelegramNotifier инициализирован. Chat ID(ы): {self.chat_ids}")
 
@@ -42,7 +51,57 @@ class TelegramNotifier:
             )
             logger.info("Ответ на /start отправлен")
 
+        @self.dp.message(Command("ask"))
+        async def cmd_ask(message: types.Message, command: CommandObject):
+            """/ask вопрос — ответ по базе вакансий (RAG) со ссылками на вакансии."""
+            if message.chat.id not in self.chat_ids:
+                return  # отвечаем только своим чатам: вопросы гоняют модели на этом компьютере
+            # Telegram досылает сообщения, пришедшие, пока бот был выключен: старые вопросы не обрабатываем
+            age = (datetime.now(timezone.utc) - message.date).total_seconds()
+            if age > ASK_MAX_AGE:
+                logger.info(f"/ask пропущен: сообщение отправлено {age:.0f} с назад, пока бот был выключен")
+                return
+            if self._ask_lock.locked():
+                await message.answer("⏳ Ещё отвечаю на предыдущий вопрос — задайте этот через минуту.")
+                return
+            question = (command.args or "").strip()
+            if not question:
+                await message.answer("Напишите вопрос после команды, например:\n"
+                                     "/ask в каких вакансиях нужен Playwright на TypeScript?")
+                return
+            logger.info(f"/ask: {question}")
+            await message.answer("🔎 Ищу по базе вакансий...")
+            async with self._ask_lock:
+                await self._answer_question(message, question)
+
         logger.info("Все обработчики настроены")
+
+    async def _answer_question(self, message, question: str):
+        """Поиск по базе вакансий и ответ со ссылками (вызывается из /ask по одному вопросу за раз)."""
+        try:
+            import os
+            os.environ.setdefault("RAG_DEVICE", settings.rag_bot_device)
+            from rag.answer import answer
+            result = await asyncio.wait_for(answer(question), timeout=ASK_TIMEOUT)
+        except asyncio.TimeoutError:
+            logger.error(f"/ask: нет ответа за {ASK_TIMEOUT} с")
+            await message.answer(f"⚠️ Не уложился в {ASK_TIMEOUT} с: модель занята оценкой вакансий "
+                                 "или видеокарта перегружена. Попробуйте ещё раз позже.")
+            return
+        except Exception as e:
+            logger.error(f"/ask не удался: {e}")
+            await message.answer(f"⚠️ Не получилось ответить: {html.escape(str(e))[:300]}")
+            return
+        lines = [html.escape(result.text[:3000]), ""]
+        if result.sources:
+            lines.append("<b>Источники:</b>")
+            for number, hit in enumerate(result.sources, start=1):
+                meta = hit.metadata or {}
+                title = html.escape(f"{meta.get('title', '')} — {meta.get('company', '')}")
+                url = html.escape(meta.get("url", ""), quote=True)
+                lines.append(f'[{number}] <a href="{url}">{title}</a>')
+        await message.answer("\n".join(lines), parse_mode="HTML",
+                             link_preview_options=LinkPreviewOptions(is_disabled=True))
 
     async def send_for_approval(self, vacancy_id: str, vacancy_data: dict, llm_result: dict):
         """Отправка вакансии в Telegram с сопроводительным письмом и кнопкой"""

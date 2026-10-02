@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     # Postgres из docker-compose.yml: postgresql+asyncpg://hh:hh_local_dev@localhost:5433/hh_agent
     database_url: str = Field(default="", alias="DATABASE_URL")
 
+    # RAG в Telegram-боте (/ask): на чём считать эмбеддинги и реранкер. По умолчанию процессор:
+    # видеокарту в это время занимает Ollama, и две нагрузки на 8 ГБ видеопамяти мешают друг другу.
+    # cuda — на видеокарте (быстрее, если памяти хватает).
+    rag_bot_device: str = Field(default="cpu", alias="RAG_BOT_DEVICE")
+
     # Ollama
     ollama_model: str = Field(default="qwen2.5:7b", alias="OLLAMA_MODEL")
     ollama_host: str = Field(default="http://localhost:11434", alias="OLLAMA_HOST")

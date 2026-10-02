@@ -9,3 +9,6 @@ python-dotenv>=1.0.0
 gigachat>=0.1.0
 alembic>=1.13.0
 asyncpg>=0.29.0
+# RAG: эмбеддинги и реранкер. torch с поддержкой видеокарты ставится отдельно:
+# pip install torch --index-url https://download.pytorch.org/whl/cu128
+sentence-transformers>=3.0.0
