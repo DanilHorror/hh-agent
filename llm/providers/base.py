@@ -10,7 +10,7 @@ import asyncio
 import random
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Awaitable, Callable, Optional, Type, TypeVar
+from typing import AsyncIterator, Awaitable, Callable, Optional, Type, TypeVar
 
 from pydantic import BaseModel
 
@@ -85,6 +85,14 @@ class LLMProvider(ABC):
         max_tokens: int = 1500,
     ) -> LLMResponse:
         ...
+
+    async def stream(self, messages: Messages, *, temperature: float = 0.3,
+                     max_tokens: int = 1500) -> AsyncIterator[str]:
+        """Ответ по частям по мере генерации (для чата и SSE).
+
+        По умолчанию — весь ответ одним куском: провайдер без потокового режима тоже работает."""
+        response = await self.complete(messages, temperature=temperature, max_tokens=max_tokens)
+        yield response.text
 
     async def aclose(self) -> None:
         """Освободить ресурсы (клиенты, соединения). По умолчанию ничего."""

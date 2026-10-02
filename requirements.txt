@@ -17,3 +17,7 @@ langgraph>=0.4.0
 langgraph-checkpoint-postgres>=2.0.0
 psycopg[binary]>=3.2.0
 psycopg-pool>=3.2.0
+# API и демо-страница
+fastapi>=0.115.0
+uvicorn>=0.30.0
+streamlit>=1.38.0

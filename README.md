@@ -36,6 +36,7 @@ flowchart LR
 - **LLM-оценка.** Модель получает резюме и полный текст вакансии и возвращает JSON: оценку релевантности 0–100, обоснование и письмо. Ответ проходит постобработку: восстановление битого JSON, удаление плейсхолдеров вида «[Имя HR]», правка ИИ-штампов, проверка фамилии.
 - **Модели.** Слой `llm/providers/`: один интерфейс и четыре реализации — локальная Ollama (qwen2.5:7b, контекст 8192 токена), GigaChat (каскад моделей и классификация ошибок API), YandexGPT и любой OpenAI-совместимый API. Модель выбирается строкой `LLM_PROVIDER` в `.env`. Повторы при сбоях сети и лимитах, учёт токенов по каждому вызову. Межпроцессная блокировка не даёт двум агентам (hh и Habr) одновременно нагружать одну локальную модель.
 - **RAG по рынку вакансий.** 546 полных текстов вакансий нарезаны на 3137 смысловых фрагментов по разделам (обязанности, требования, условия, стек). Эмбеддинги deepvk/USER-bge-m3 лежат в pgvector с HNSW-индексом, рядом полнотекстовый индекс Postgres с русской морфологией. Поиск гибридный: векторы + слова, объединение RRF, затем реранкер BAAI/bge-reranker-v2-m3 на топ-20. Модель отвечает только по найденным фрагментам со ссылками на вакансии; текст вакансий передаётся как данные, а не как инструкции. Вопрос можно задать из консоли (`scripts/rag_ask.py`) или боту командой `/ask`.
+- **HTTP API (FastAPI) и демо-страница (Streamlit).** `GET /search` — гибридный поиск, `POST /ask` — ответ о рынке со ссылками, `POST /ask/stream` — тот же ответ по частям (Server-Sent Events), `POST /evaluate` — оценка вакансии и черновик письма, `GET /stats` и `GET /health`. Запросы и ответы описаны Pydantic-схемами: неверные данные отклоняются с ошибкой 422, недоступная модель — 503 с понятным текстом. Документация с кнопками «Try it out» — на `/docs`. Демо-страница ходит в API и показывает ответ по мере генерации.
 - **Анализ рынка.** `analyze_market.py` проходит все страницы выдачи, сохраняет полные тексты вакансий и с помощью LLM (плюс словарь как страховка) выписывает ключевые навыки; ответы модели кэшируются в БД.
 - **Тесты.** `test/` — pytest на отклик, разбор чатов, извлечение ключевых слов, схему ответа модели и слой провайдеров (HTTP и SDK подменены заглушками, сеть не нужна).
 
@@ -56,7 +57,7 @@ flowchart LR
 
 ## Стек
 
-Python · asyncio · Playwright · PostgreSQL · pgvector · SQLAlchemy (async) · Alembic · Docker Compose · LangGraph · sentence-transformers (USER-bge-m3, bge-reranker-v2-m3) · Pydantic · Ollama · GigaChat API · YandexGPT API · httpx · aiogram · pytest
+Python · asyncio · Playwright · PostgreSQL · pgvector · SQLAlchemy (async) · Alembic · Docker Compose · LangGraph · FastAPI · Streamlit · sentence-transformers (USER-bge-m3, bge-reranker-v2-m3) · Pydantic · Ollama · GigaChat API · YandexGPT API · httpx · aiogram · pytest
 
 ## Запуск
 
@@ -80,6 +81,13 @@ venv\Scripts\python.exe scripts\migrate_sqlite_to_postgres.py
 ```
 
 После переноса добавить в `.env` строку `DATABASE_URL=postgresql+asyncpg://hh:hh_local_dev@localhost:5433/hh_agent`.
+
+API и демо (после запуска базы):
+
+```
+"Запустить API.bat"      → http://localhost:8000/docs
+"Запустить демо.bat"     → http://localhost:8501
+```
 
 Тесты (без сети, браузера и запущенной модели):
 

@@ -5,7 +5,7 @@ import asyncio
 import contextlib
 import os
 import time
-from typing import Optional, Type
+from typing import AsyncIterator, Optional, Type
 
 import ollama
 from pydantic import BaseModel
@@ -177,6 +177,29 @@ class OllamaProvider(LLMProvider):
             prompt_tokens=prompt_tokens,
             completion_tokens=_field(response, "eval_count"),
         )
+
+    async def stream(self, messages: Messages, *, temperature: float = 0.3,
+                     max_tokens: int = 1500) -> AsyncIterator[str]:
+        """Потоковая генерация: Ollama отдаёт ответ кусками по несколько токенов."""
+        client = ollama.AsyncClient(host=self.host, timeout=self.timeout)
+        options = {"temperature": temperature, "num_ctx": self.num_ctx, "num_predict": max_tokens}
+        lock = ollama_lock(stale_after=self.timeout + 60) if self.use_lock else contextlib.nullcontext()
+        try:
+            async with lock:
+                chunks = await client.chat(model=self.model, messages=messages, options=options, stream=True)
+                async for chunk in chunks:
+                    message = _field(chunk, "message")
+                    piece = message.get("content") if isinstance(message, dict) else getattr(message, "content", "")
+                    if piece:
+                        yield piece
+        except LLMError:
+            raise
+        except (asyncio.TimeoutError, TimeoutError) as e:
+            raise LLMError("timeout", f"модель не ответила за {self.timeout} с", self.name) from e
+        except Exception as e:  # noqa: BLE001
+            name = type(e).__name__
+            kind = "network" if any(s in name for s in ("Connect", "Timeout", "Network")) else "unknown"
+            raise LLMError(kind, f"{name}: {e}", self.name) from e
 
     async def health(self, timeout: float = 5.0) -> tuple[bool, str]:
         """Быстрая проверка, что Ollama отвечает (без генерации)."""

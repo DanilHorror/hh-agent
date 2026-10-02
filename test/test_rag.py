@@ -127,3 +127,14 @@ def test_answer_without_hits_does_not_call_llm(monkeypatch):
     monkeypatch.setattr(rag_answer, "search", empty_search)
     result = asyncio.run(rag_answer.answer("что угодно"))
     assert result.text == rag_answer.NO_ANSWER and result.sources == []
+
+
+def test_fragments_of_one_vacancy_become_one_source():
+    hits = [Hit(1, "a", "requirements", "QA — A. Требования:\nPython", {"title": "QA"}),
+            Hit(2, "b", "duties", "SDET — B. Обязанности:\nтесты", {"title": "SDET"}),
+            Hit(3, "a", "plus", "QA — A. Будет плюсом:\nLLM", {"title": "QA"})]
+    merged = rag_answer.merge_by_vacancy(hits)
+    assert [h.vacancy_id for h in merged] == ["a", "b"]
+    assert merged[0].content == "QA — A. Требования:\nPython\n…\nLLM"
+    assert merged[0].section == "requirements, plus"
+    assert hits[0].content == "QA — A. Требования:\nPython"   # исходные фрагменты не меняются

@@ -67,6 +67,15 @@ async def ask_llm(messages: list, schema=None, *, json_mode: bool = False,
     return response
 
 
+async def stream_llm(messages: list, *, temperature: float = 0.3, max_tokens: int = 1500):
+    """Ответ модели из .env по частям (для потокового /ask). Повторов нет: поток не перезапускают с середины."""
+    provider = get_provider()
+    started = time.time()
+    async for piece in provider.stream(messages, temperature=temperature, max_tokens=max_tokens):
+        yield piece
+    print(f"[LLM] {provider.name}/{provider.model}: потоковый ответ за {time.time() - started:.1f} с")
+
+
 def load_resume() -> str:
     """Загружает резюме из файла resume.txt"""
     resume_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resume.txt")

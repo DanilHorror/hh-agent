@@ -132,18 +132,8 @@ def test_unknown_vacancy_is_not_waiting():
     assert run(Recorder().agent().resume("nope", "approve")) == "not_waiting"
 
 
-def _load_metrics_module():
-    import importlib.util
-
-    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts", "agent_metrics.py")
-    spec = importlib.util.spec_from_file_location("agent_metrics", path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
 def test_metrics_counts_first_draft_and_agreement():
-    m = _load_metrics_module()
+    from agent import metrics as m
 
     d = lambda vid, decision, score: SimpleNamespace(vacancy_id=vid, decision=decision, relevance_score=score)  # noqa: E731
     result = m.summarize([
