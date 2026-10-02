@@ -3,47 +3,9 @@ import re
 import os
 import time
 import asyncio
-import contextlib
-import ollama
 from pydantic import BaseModel, Field, ValidationError
 from config import settings
-
-# Файл-замок: если запущены два скрипта (hh и Habr), к Ollama обращается только один за раз.
-# Два одновременных запроса к 7B-модели тормозят друг друга и могут "подвесить" обоих.
-OLLAMA_LOCK_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "ollama.lock")
-
-
-@contextlib.asynccontextmanager
-async def ollama_lock(stale_after: float):
-    """Межпроцессный замок на файле. Замок старше stale_after секунд считается брошенным (процесс убили)."""
-    fd = None
-    announced = False
-    while fd is None:
-        try:
-            fd = os.open(OLLAMA_LOCK_PATH, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-            os.write(fd, str(os.getpid()).encode())
-        except FileExistsError:
-            try:
-                if time.time() - os.path.getmtime(OLLAMA_LOCK_PATH) > stale_after:
-                    os.remove(OLLAMA_LOCK_PATH)
-                    continue
-            except OSError:
-                pass
-            if not announced:
-                print("[LLM] ⏳ Ollama занята другим окном, жду своей очереди...")
-                announced = True
-            await asyncio.sleep(1.0)
-    try:
-        yield
-    finally:
-        try:
-            os.close(fd)
-        except OSError:
-            pass
-        try:
-            os.remove(OLLAMA_LOCK_PATH)
-        except OSError:
-            pass
+from llm.providers import LLMError, LLMResponse, get_provider, with_retries
 
 
 class VacancyEvaluation(BaseModel):
@@ -56,20 +18,6 @@ class VacancyEvaluation(BaseModel):
 
 
 EVALUATION_SCHEMA = VacancyEvaluation.model_json_schema()
-
-
-def _field(response, name: str, default=None):
-    """Ответ ollama — dict в старых версиях клиента и объект в новых."""
-    if isinstance(response, dict):
-        return response.get(name, default)
-    return getattr(response, name, default)
-
-
-def _content(response) -> str:
-    message = _field(response, "message")
-    if isinstance(message, dict):
-        return (message.get("content") or "").strip()
-    return (getattr(message, "content", "") or "").strip()
 
 
 def parse_evaluation(raw_content: str) -> tuple[dict, str]:
@@ -100,19 +48,23 @@ def parse_evaluation(raw_content: str) -> tuple[dict, str]:
     return extract_from_broken_json(raw_content), "regex"
 
 
-def _warn_if_truncated(response) -> None:
-    """Ollama молча обрезает промпт, длиннее num_ctx. Если модель прочитала
-    почти весь контекст, часть резюме или вакансии могла не попасть в него."""
-    prompt_tokens = _field(response, "prompt_eval_count")
-    output_tokens = _field(response, "eval_count")
-    if prompt_tokens is None:
-        return
-    print(f"[LLM] токены: промпт {prompt_tokens}, ответ {output_tokens} (num_ctx {settings.ollama_num_ctx})")
-    if prompt_tokens >= settings.ollama_num_ctx * 0.95:
-        print(
-            f"[LLM] ⚠️ Промпт занял {prompt_tokens} из {settings.ollama_num_ctx} токенов контекста — "
-            "вероятно, он обрезан. Увеличьте OLLAMA_NUM_CTX в .env."
-        )
+def _log_usage(response: LLMResponse, started: float) -> None:
+    """Токены и время по каждому вызову — основа для расчёта стоимости и для трейсинга."""
+    print(
+        f"[LLM] {response.provider}/{response.model}: токены промпт {response.prompt_tokens}, "
+        f"ответ {response.completion_tokens}, {time.time() - started:.1f} с"
+    )
+
+
+async def ask_llm(messages: list, schema=None, *, json_mode: bool = False,
+                  temperature: float = 0.3, max_tokens: int = 1500) -> LLMResponse:
+    """Один запрос к модели из .env (LLM_PROVIDER) с повтором при временных сбоях."""
+    provider = get_provider()
+    started = time.time()
+    response = await with_retries(lambda: provider.complete(
+        messages, schema, json_mode=json_mode, temperature=temperature, max_tokens=max_tokens))
+    _log_usage(response, started)
+    return response
 
 
 def load_resume() -> str:
@@ -216,15 +168,14 @@ def extract_from_broken_json(raw_content: str) -> dict:
 
 async def check_ollama_health(timeout: float = 5.0) -> tuple[bool, str]:
     """
-    Быстрая проверка, что Ollama отвечает по settings.ollama_host (без реальной генерации).
-    Возвращает (True, "") если жива, иначе (False, текст_ошибки).
+    Быстрая проверка, что Ollama отвечает (без реальной генерации). Возвращает (True, "")
+    если жива, иначе (False, текст_ошибки). Для облачных провайдеров проверки нет — True.
     """
-    try:
-        client = ollama.AsyncClient(host=settings.ollama_host, timeout=timeout)
-        await asyncio.wait_for(client.list(), timeout=timeout)
+    provider = get_provider()
+    health = getattr(provider, "health", None)
+    if health is None:
         return True, ""
-    except Exception as e:
-        return False, str(e)
+    return await health(timeout)
 
 
 async def evaluate_and_draft(vacancy_data: dict) -> dict:
@@ -261,65 +212,35 @@ async def evaluate_and_draft(vacancy_data: dict) -> dict:
 """
 
     try:
-        print(f"[LLM] Отправка запроса к {settings.ollama_model}...")
+        provider = get_provider()
+        print(f"[LLM] Отправка запроса к {provider.name}/{provider.model}...")
         started = time.time()
-        client = ollama.AsyncClient(host=settings.ollama_host, timeout=settings.ollama_timeout)
-        # Асинхронный клиент вместо синхронного ollama.chat: тот блокировал весь процесс
-        # (в том числе Telegram-бота) на всё время генерации и не имел таймаута.
-
-        async def ask(messages, fmt):
-            return await asyncio.wait_for(
-                client.chat(
-                    model=settings.ollama_model,
-                    messages=messages,
-                    # Structured output: JSON-схема ответа. Старые версии Ollama понимают
-                    # только format='json' — на них откатываемся ниже.
-                    format=fmt,
-                    options={
-                        # Температуру подняли с 0.3: при низкой модель почти детерминирована и
-                        # штампует письма одинаковыми фразами независимо от вакансии. 0.6 даёт
-                        # больше лексического разнообразия, оставаясь связным.
-                        'temperature': 0.6,
-                        # Резюме + вакансия + инструкции ~5 тыс. токенов; при контексте по умолчанию
-                        # (2-4 тыс.) начало промпта обрезается. Ограничение num_predict не даёт
-                        # модели генерировать бесконечно, если она зациклилась.
-                        'num_ctx': settings.ollama_num_ctx,
-                        'num_predict': settings.ollama_num_predict,
-                    },
-                ),
-                timeout=settings.ollama_timeout + 10,
-            )
+        # Температуру подняли с 0.3: при низкой модель почти детерминирована и штампует письма
+        # одинаковыми фразами независимо от вакансии. 0.6 даёт больше разнообразия, оставаясь связным.
+        params = dict(temperature=0.6, max_tokens=settings.ollama_num_predict)
 
         messages = [{'role': 'user', 'content': prompt}]
-        async with ollama_lock(stale_after=settings.ollama_timeout + 60):
-            try:
-                response = await ask(messages, EVALUATION_SCHEMA)
-            except Exception as e:
-                if "format" not in str(e).lower():
-                    raise
-                print("[LLM] Эта версия Ollama не поддерживает JSON-схему, использую format='json'")
-                response = await ask(messages, 'json')
-            _warn_if_truncated(response)
-            raw_content = _content(response)
-            result, parsed_by = parse_evaluation(raw_content)
+        response = await ask_llm(messages, VacancyEvaluation, **params)
+        raw_content = response.text
+        result, parsed_by = parse_evaluation(raw_content)
 
-            if parsed_by == "regex":
-                # Один повтор с текстом ошибки: модели проще исправить конкретный сбой.
-                print("[LLM] ⚠️ Ответ не прошёл проверку схемой, прошу модель исправить...")
-                retry_messages = messages + [
-                    {'role': 'assistant', 'content': raw_content},
-                    {'role': 'user', 'content': (
-                        'Ответ выше — невалидный JSON. Верни ТОЛЬКО JSON-объект с ключами '
-                        '"relevance_score" (целое 0-100), "reasoning" (строка), "cover_letter" (строка).'
-                    )},
-                ]
-                try:
-                    retry_response = await ask(retry_messages, EVALUATION_SCHEMA)
-                    retry_result, retry_parsed_by = parse_evaluation(_content(retry_response))
-                    if retry_parsed_by != "regex":
-                        result, parsed_by = retry_result, retry_parsed_by
-                except Exception as e:
-                    print(f"[LLM] Повтор не удался ({e}), использую извлечённые регулярками данные")
+        if parsed_by == "regex":
+            # Один повтор с текстом ошибки: модели проще исправить конкретный сбой.
+            print("[LLM] ⚠️ Ответ не прошёл проверку схемой, прошу модель исправить...")
+            retry_messages = messages + [
+                {'role': 'assistant', 'content': raw_content},
+                {'role': 'user', 'content': (
+                    'Ответ выше — невалидный JSON. Верни ТОЛЬКО JSON-объект с ключами '
+                    '"relevance_score" (целое 0-100), "reasoning" (строка), "cover_letter" (строка).'
+                )},
+            ]
+            try:
+                retry_response = await ask_llm(retry_messages, VacancyEvaluation, **params)
+                retry_result, retry_parsed_by = parse_evaluation(retry_response.text)
+                if retry_parsed_by != "regex":
+                    result, parsed_by = retry_result, retry_parsed_by
+            except Exception as e:
+                print(f"[LLM] Повтор не удался ({e}), использую извлечённые регулярками данные")
         print(f"[LLM] Ответ получен за {time.time() - started:.0f} сек (разбор: {parsed_by})")
 
         result["relevance_score"] = int(result.get("relevance_score", 0))
@@ -350,9 +271,10 @@ async def evaluate_and_draft(vacancy_data: dict) -> dict:
         
     except Exception as e:
         # error=True: вакансия не должна навсегда попадать в SKIPPED из-за сбоя модели — оркестратор повторит её позже
-        reason = "таймаут" if isinstance(e, (asyncio.TimeoutError, TimeoutError)) or "timeout" in type(e).__name__.lower() else str(e)
-        print(f"❌ Ошибка вызова LLM ({reason}). Проверьте, что Ollama запущена: команда `ollama ps`")
-        return {"relevance_score": 0, "reasoning": "Ошибка соединения с Ollama", "cover_letter": "", "error": True}
+        reason = e.kind + ": " + e.detail[:200] if isinstance(e, LLMError) else f"{type(e).__name__}: {e}"
+        hint = " Проверьте, что Ollama запущена: команда `ollama ps`" if settings.llm_provider == "ollama" else ""
+        print(f"❌ Ошибка вызова LLM ({reason}).{hint}")
+        return {"relevance_score": 0, "reasoning": "Ошибка вызова LLM", "cover_letter": "", "error": True}
 
 
 async def generate_answers_for_questions(questions: list, vacancy_data: dict) -> list:
@@ -373,13 +295,8 @@ async def generate_answers_for_questions(questions: list, vacancy_data: dict) ->
 
     try:
         print(f"[LLM] Генерация ответов на {len(questions)} вопросов...")
-        response = ollama.chat(
-            model=settings.ollama_model,
-            messages=[{'role': 'user', 'content': prompt}],
-            options={'temperature': 0.3, 'format': 'json'}
-        )
-        
-        raw_content = response['message']['content'].strip()
+        response = await ask_llm([{'role': 'user', 'content': prompt}], temperature=0.3)
+        raw_content = response.text
         match = re.search(r'\[.*\]', raw_content, re.DOTALL)
         json_str = match.group(0) if match else raw_content
             
@@ -394,3 +311,16 @@ async def generate_answers_for_questions(questions: list, vacancy_data: dict) ->
     except Exception as e:
         print(f"[LLM] ❌ Ошибка генерации ответов: {e}")
         return [None] * len(questions)
+
+
+async def generate_short_answer(prompt: str, fallback: str) -> str:
+    """Короткий ответ на вопрос анкеты работодателя (1-2 предложения) моделью из .env."""
+    try:
+        response = await ask_llm([{'role': 'user', 'content': prompt}], temperature=0.3, max_tokens=150)
+        answer = response.text.strip()
+        if answer.startswith('"') and answer.endswith('"'):
+            answer = answer[1:-1]
+        return answer or fallback
+    except Exception as e:
+        print(f"[LLM] ❌ Ошибка генерации ответа: {e}")
+        return fallback

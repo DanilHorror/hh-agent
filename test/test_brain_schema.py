@@ -10,6 +10,8 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from llm import brain  # noqa: E402
+from llm import providers  # noqa: E402
+from llm.providers import ollama_provider  # noqa: E402
 
 VACANCY = {"title": "Python Developer", "company": "Acme", "description": "FastAPI, PostgreSQL, LLM"}
 GOOD = {"relevance_score": 72, "reasoning": "Совпадает стек", "cover_letter": "Добрый день!\nМой опыт подходит."}
@@ -36,7 +38,12 @@ class FakeClient:
 def fake_ollama(monkeypatch):
     FakeClient.script = []
     FakeClient.formats = []
-    monkeypatch.setattr(brain.ollama, "AsyncClient", FakeClient)
+    monkeypatch.setattr(ollama_provider.ollama, "AsyncClient", FakeClient)
+    # Тест не зависит от LLM_PROVIDER в .env и не создаёт файл-замок в папке проекта
+    providers.set_provider(ollama_provider.OllamaProvider(
+        model="test-model", host="http://localhost:11434", timeout=5, num_ctx=8192, use_lock=False))
+    yield
+    providers.set_provider(None)
 
 
 def run(coro):

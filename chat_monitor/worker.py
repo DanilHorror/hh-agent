@@ -2,12 +2,11 @@ import asyncio
 import random
 import os
 import logging
-import ollama
 from urllib.parse import urlencode
 from playwright.async_api import async_playwright, Page, BrowserContext
 from config import settings
 from database import is_vacancy_known
-from llm.brain import USER_RESUME
+from llm.brain import USER_RESUME, generate_short_answer
 
 logger = logging.getLogger('BrowserWorker')
 
@@ -488,15 +487,8 @@ class BrowserWorker:
 Вопрос: {question}
 Ответ:
 """
-            response = ollama.chat(
-                model="qwen2.5:7b",
-                messages=[{'role': 'user', 'content': prompt}],
-                options={'temperature': 0.3, 'num_predict': 150}
-            )
-            answer = response['message']['content'].strip()
-            if answer.startswith('"') and answer.endswith('"'):
-                answer = answer[1:-1]
-            return answer
+            # Модель из .env (LLM_PROVIDER), а не жёстко заданная qwen2.5:7b; асинхронно — не блокирует бота
+            return await generate_short_answer(prompt, fallback="Готов обсудить на собеседовании.")
         except Exception as e:
             logger.error(f"❌ Ошибка LLM: {e}")
             return "Готов обсудить на собеседовании."

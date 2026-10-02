@@ -111,7 +111,8 @@ def _default_send_fn(credentials: str, ca_bundle_file: Optional[str], timeout: f
     stack = ExitStack()
     clients: Dict[str, object] = {}
 
-    def send(model: str, messages: List[dict]) -> str:
+    def send(model: str, messages: List[dict], temperature: float = TEMPERATURE,
+             max_tokens: int = MAX_TOKENS) -> str:
         from gigachat import GigaChat
         from gigachat.models import ChatCompletionRequest, ChatMessage
 
@@ -126,13 +127,16 @@ def _default_send_fn(credentials: str, ca_bundle_file: Optional[str], timeout: f
             # Новые версии SDK: параметры генерации лежат в model_options.
             request = ChatCompletionRequest(
                 messages=chat_messages,
-                model_options={"temperature": TEMPERATURE, "max_tokens": MAX_TOKENS})
+                model_options={"temperature": temperature, "max_tokens": max_tokens})
         except Exception:  # noqa: BLE001 — старые версии SDK: temperature/max_tokens на верхнем уровне
-            request = ChatCompletionRequest(messages=chat_messages, temperature=TEMPERATURE, max_tokens=MAX_TOKENS)
+            request = ChatCompletionRequest(messages=chat_messages, temperature=temperature, max_tokens=max_tokens)
         response = client.chat.create(request)
+        usage = getattr(response, "usage", None)
+        send.last_usage = (getattr(usage, "prompt_tokens", None), getattr(usage, "completion_tokens", None))
         return response.messages[0].content[0].text
 
     send.close = stack.close  # type: ignore[attr-defined]
+    send.last_usage = (None, None)  # type: ignore[attr-defined]
     return send
 
 
@@ -150,6 +154,11 @@ class GigaChatBackend:
         self.used_model = self.models[0]
         self._sleep = sleep_fn
         self._send = send_fn or _default_send_fn(credentials, ca_bundle_file, timeout)
+        # Параметры генерации для следующего вызова (temperature, max_tokens). Пусто — константы выше.
+        # Их задаёт llm/providers/gigachat_provider.py; анализ рынка их не трогает.
+        self.generation: Dict[str, float] = {}
+        # (токены промпта, токены ответа) последнего вызова, если SDK их вернул
+        self.last_usage = (None, None)
 
     @classmethod
     def from_env(cls, base_dir: str) -> "GigaChatBackend":
@@ -205,7 +214,11 @@ class GigaChatBackend:
         while True:
             model_name = self.current_model
             try:
-                text = self._send(model_name, messages)
+                if self.generation:
+                    text = self._send(model_name, messages, **self.generation)
+                else:
+                    text = self._send(model_name, messages)
+                self.last_usage = getattr(self._send, "last_usage", (None, None))
             except Exception as e:  # noqa: BLE001 — классифицируем любую ошибку SDK
                 failure = classify_error(e)
                 if failure.kind == "no_tokens":

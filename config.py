@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 from typing import Optional
 
@@ -13,7 +13,20 @@ class Settings(BaseSettings):
         """Список получателей уведомлений (поддержка нескольких ID через запятую в .env)"""
         return [int(cid.strip()) for cid in str(self.telegram_chat_id).split(',') if cid.strip()]
 
-    # LLM
+    # LLM: какой провайдер отвечает — ollama | gigachat | yandexgpt | openai (см. llm/providers)
+    llm_provider: str = Field(default="ollama", alias="LLM_PROVIDER")
+    # Сколько секунд ждать ответ облачной модели
+    llm_timeout: int = Field(default=60, alias="LLM_TIMEOUT")
+    # OpenAI-совместимый API (Groq, OpenRouter, DeepSeek, vLLM, LM Studio...)
+    llm_base_url: str = Field(default="", alias="LLM_BASE_URL")
+    llm_api_key: str = Field(default="", alias="LLM_API_KEY")
+    llm_model: str = Field(default="", alias="LLM_MODEL")
+    # YandexGPT (Yandex Cloud / AI Studio)
+    yandex_api_key: str = Field(default="", alias="YANDEX_API_KEY")
+    yandex_folder_id: str = Field(default="", alias="YANDEX_FOLDER_ID")
+    yandex_model: str = Field(default="yandexgpt/latest", alias="YANDEX_MODEL")
+
+    # Ollama
     ollama_model: str = Field(default="qwen2.5:7b", alias="OLLAMA_MODEL")
     ollama_host: str = Field(default="http://localhost:11434", alias="OLLAMA_HOST")
     # Сколько секунд ждать ответ модели, прежде чем считать запрос зависшим
@@ -73,9 +86,6 @@ class Settings(BaseSettings):
     freshness_days: int = Field(default=3, alias="FRESHNESS_DAYS")
     min_relevance_score: int = Field(default=60, alias="MIN_RELEVANCE_SCORE")
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        extra = "ignore"
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 settings = Settings()
