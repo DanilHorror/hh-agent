@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     yandex_folder_id: str = Field(default="", alias="YANDEX_FOLDER_ID")
     yandex_model: str = Field(default="yandexgpt/latest", alias="YANDEX_MODEL")
 
+    # База данных. Пусто — файл SQLite hh_agent.db, как раньше.
+    # Postgres из docker-compose.yml: postgresql+asyncpg://hh:hh_local_dev@localhost:5433/hh_agent
+    database_url: str = Field(default="", alias="DATABASE_URL")
+
     # Ollama
     ollama_model: str = Field(default="qwen2.5:7b", alias="OLLAMA_MODEL")
     ollama_host: str = Field(default="http://localhost:11434", alias="OLLAMA_HOST")
@@ -89,3 +93,20 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 settings = Settings()
+
+SQLITE_URL = "sqlite+aiosqlite:///./hh_agent.db"
+# Postgres из docker-compose.yml (локальный, доступен только с этого компьютера)
+LOCAL_POSTGRES_URL = "postgresql+asyncpg://hh:hh_local_dev@localhost:5433/hh_agent"
+
+
+def database_url() -> str:
+    """Адрес базы бота: DATABASE_URL из .env или SQLite по умолчанию."""
+    return settings.database_url.strip() or SQLITE_URL
+
+
+def migration_target_url() -> str:
+    """Куда применять миграции и переносить данные: Postgres из .env, иначе локальный из docker-compose.
+
+    Так миграции и перенос можно выполнить до того, как бот переключён на Postgres."""
+    url = settings.database_url.strip()
+    return url if url.startswith("postgresql") else LOCAL_POSTGRES_URL

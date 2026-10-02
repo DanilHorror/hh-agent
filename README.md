@@ -7,7 +7,7 @@
 ```mermaid
 flowchart LR
     S[Оркестратор<br/>расписание, лимиты] --> B[Браузерный воркер<br/>Playwright, hh.ru + Habr]
-    B --> DB[(SQLite<br/>вакансии и статусы)]
+    B --> DB[(PostgreSQL + pgvector<br/>или SQLite<br/>вакансии и статусы)]
     B --> L[LLM-слой<br/>Ollama / GigaChat /<br/>YandexGPT / OpenAI API]
     L -->|оценка 0–100 + черновик| N[Telegram-бот<br/>aiogram]
     N -->|подтверждение| H{Человек}
@@ -29,7 +29,7 @@ flowchart LR
 
 ## Стек
 
-Python · asyncio · Playwright · SQLAlchemy (async) · Pydantic · Ollama · GigaChat API · YandexGPT API · httpx · aiogram · pytest
+Python · asyncio · Playwright · PostgreSQL · pgvector · SQLAlchemy (async) · Alembic · Docker Compose · Pydantic · Ollama · GigaChat API · YandexGPT API · httpx · aiogram · pytest
 
 ## Запуск
 
@@ -43,6 +43,16 @@ copy resume.example.txt resume.txt  # вставить своё резюме
 ollama pull qwen2.5:7b
 python main_hh.py
 ```
+
+База данных — PostgreSQL с pgvector в Docker (без `DATABASE_URL` в `.env` бот работает на файле SQLite):
+
+```
+docker compose up -d
+venv\Scripts\python.exe -m alembic upgrade head
+venv\Scripts\python.exe scripts\migrate_sqlite_to_postgres.py
+```
+
+После переноса добавить в `.env` строку `DATABASE_URL=postgresql+asyncpg://hh:hh_local_dev@localhost:5433/hh_agent`.
 
 Тесты (без сети, браузера и запущенной модели):
 

@@ -1,15 +1,21 @@
 import asyncio
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from sqlalchemy import Column, Integer, String, DateTime, Enum, Text, Float
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import select
+from sqlalchemy.orm import declarative_base
+from sqlalchemy import inspect, select
 import enum
 
+from config import database_url
+
 Base = declarative_base()
+
+
+def utcnow() -> datetime:
+    """Текущее время UTC без часового пояса — в таком виде даты уже лежат в базе."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 class VacancyStatus(enum.Enum):
     NEW = "new"
@@ -28,11 +34,11 @@ class Vacancy(Base):
     company = Column(String, nullable=False)
     url = Column(String, nullable=False)
     description_snippet = Column(Text)
-    status = Column(Enum(VacancyStatus), default=VacancyStatus.NEW)
+    status = Column(Enum(VacancyStatus), default=VacancyStatus.NEW, index=True)
     relevance_score = Column(Float)
     cover_letter_draft = Column(Text)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
     sent_at = Column(DateTime)
 
 class VacancyRaw(Base):
@@ -49,7 +55,7 @@ class VacancyRaw(Base):
     url = Column(String)
     skills_json = Column(Text)        # JSON-список тегов блока «Ключевые навыки»
     description = Column(Text)        # полный текст описания, без обрезки
-    scraped_at = Column(DateTime, default=datetime.utcnow)
+    scraped_at = Column(DateTime, default=utcnow)
 
 class VacancyKeywords(Base):
     """Ключевые слова вакансии, которые выписал ИИ (кэш, чтобы не гонять модель повторно)."""
@@ -59,17 +65,34 @@ class VacancyKeywords(Base):
     vacancy_id = Column(String, unique=True, index=True, nullable=False)
     keywords_json = Column(Text)      # JSON-список ключевиков
     model = Column(String)            # какой моделью получено
-    extracted_at = Column(DateTime, default=datetime.utcnow)
+    extracted_at = Column(DateTime, default=utcnow)
 
-# Создаем движок и сессию
-DATABASE_URL = "sqlite+aiosqlite:///./hh_agent.db"
-engine = create_async_engine(DATABASE_URL, echo=False)
+# Движок и сессии. Адрес — DATABASE_URL из .env; без него файл SQLite hh_agent.db, как раньше.
+DATABASE_URL = database_url()
+IS_SQLITE = DATABASE_URL.startswith("sqlite")
+# pool_pre_ping: перед запросом проверить, что соединение с сервером живо (Postgres мог перезапуститься)
+engine = create_async_engine(DATABASE_URL, echo=False, **({} if IS_SQLITE else {"pool_pre_ping": True}))
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
+
+def _safe_url(url: str) -> str:
+    return url.split("@", 1)[-1] if "@" in url else url
+
+
 async def init_db():
-    """Инициализация базы данных"""
+    """Инициализация базы данных.
+
+    SQLite: таблицы создаются сами, как раньше. Postgres: схемой управляют миграции Alembic,
+    поэтому здесь только проверка, что они применены.
+    """
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        if IS_SQLITE:
+            await conn.run_sync(Base.metadata.create_all)
+            return
+        tables = await conn.run_sync(lambda c: set(inspect(c).get_table_names()))
+    if "alembic_version" not in tables:
+        raise RuntimeError(
+            f"В базе {_safe_url(DATABASE_URL)} нет схемы. Выполните: venv\\Scripts\\python.exe -m alembic upgrade head")
 
 async def save_vacancy(vacancy: Vacancy):
     """Сохранение вакансии в БД"""
@@ -85,7 +108,7 @@ async def update_vacancy_status(vacancy_id: str, status: VacancyStatus, **kwargs
         
         if vacancy:
             vacancy.status = status
-            vacancy.updated_at = datetime.utcnow()
+            vacancy.updated_at = utcnow()
             
             # Обновляем дополнительные поля если переданы
             for key, value in kwargs.items():
@@ -93,7 +116,7 @@ async def update_vacancy_status(vacancy_id: str, status: VacancyStatus, **kwargs
                     setattr(vacancy, key, value)
             
             if status == VacancyStatus.SENT:
-                vacancy.sent_at = datetime.utcnow()
+                vacancy.sent_at = utcnow()
             
             await session.commit()
 
@@ -153,7 +176,7 @@ async def save_vacancy_raw(vacancy_id: str, title: str, company: str, url: str,
         row.url = url
         row.skills_json = skills_json
         row.description = description
-        row.scraped_at = datetime.utcnow()
+        row.scraped_at = utcnow()
         await session.commit()
 
 async def get_raw_vacancy_ids() -> set:
@@ -197,7 +220,7 @@ async def save_llm_keywords(vacancy_id: str, keywords: list, model: str):
             session.add(row)
         row.keywords_json = json.dumps(keywords, ensure_ascii=False)
         row.model = model
-        row.extracted_at = datetime.utcnow()
+        row.extracted_at = utcnow()
         await session.commit()
 
 async def get_llm_keywords(model_prefix: str = None) -> dict:

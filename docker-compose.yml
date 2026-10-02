@@ -1,0 +1,27 @@
+# Локальная инфраструктура hh-агента.
+# Запуск:     docker compose up -d
+# Состояние:  docker compose ps
+# Остановка:  docker compose stop      (данные сохраняются в томе pgdata)
+services:
+  postgres:
+    # Postgres 17 с уже установленным расширением pgvector (векторный поиск для RAG)
+    image: pgvector/pgvector:pg17
+    container_name: hh_agent_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hh
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hh_local_dev}
+      POSTGRES_DB: hh_agent
+    ports:
+      # Только с этого компьютера; 5433, чтобы не конфликтовать с установленным Postgres
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hh -d hh_agent"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
