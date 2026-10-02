@@ -1,0 +1,28 @@
+# Секреты и локальные настройки
+.env
+*.cer
+*.pem
+
+# Персональные данные: резюме, база, логи, собранные вакансии
+resume.txt
+*.db
+*.log
+vacancies_collected_*.csv
+keywords_report*.csv
+debug_*.png
+test/*.db
+test/*.png
+
+# Профили браузера (cookies и сессии hh.ru / Хабра)
+browser_profile/
+browser_profile_habr/
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Служебное
+*outputs/
+
+ollama.lock
