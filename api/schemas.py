@@ -72,3 +72,28 @@ class HealthResponse(BaseModel):
     database: str
     llm: str
     llm_provider: str
+
+
+class GoldenItem(BaseModel):
+    vacancy_id: str
+    title: str
+    company: str
+    url: str
+    description: str
+    label: Optional[Literal["fit", "not_fit", "unsure"]] = None
+    note: str = ""
+
+
+class GoldenSet(BaseModel):
+    total: int
+    labeled: int
+    fit: int
+    not_fit: int
+    unsure: int
+    items: list[GoldenItem]
+
+
+class LabelRequest(BaseModel):
+    label: Optional[Literal["fit", "not_fit", "unsure"]] = Field(
+        description="fit — подходит, not_fit — не подходит, unsure — не уверен; null — снять отметку")
+    note: str = Field(default="", max_length=500)

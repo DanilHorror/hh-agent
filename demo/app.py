@@ -29,6 +29,12 @@ def api_post(path: str, payload: dict):
     return response.json()
 
 
+def api_put(path: str, payload: dict):
+    response = httpx.put(f"{API_URL}{path}", json=payload, timeout=TIMEOUT)
+    response.raise_for_status()
+    return response.json()
+
+
 def show_error(e: Exception):
     if isinstance(e, httpx.ConnectError):
         st.error(f"API не отвечает по адресу {API_URL}. Запустите «Запустить API.bat».")
@@ -56,7 +62,8 @@ with st.sidebar:
         show_error(e)
     st.caption(f"API: {API_URL} · [документация]({API_URL}/docs)")
 
-tab_ask, tab_search, tab_eval = st.tabs(["💬 Спросить о рынке", "🔎 Поиск вакансий", "🧠 Оценить вакансию"])
+tab_ask, tab_search, tab_eval, tab_label = st.tabs(
+    ["💬 Спросить о рынке", "🔎 Поиск вакансий", "🧠 Оценить вакансию", "🏷️ Разметка"])
 
 # --- Вопрос о рынке: потоковый ответ со ссылками ----------------------------------------
 with tab_ask:
@@ -128,3 +135,65 @@ with tab_eval:
             st.text_area("Черновик письма", result["cover_letter"], height=250)
         except Exception as e:  # noqa: BLE001
             show_error(e)
+
+# --- Разметка эталонного набора ---------------------------------------------------------
+LABEL_NAMES = {"fit": "✅ подходит", "not_fit": "❌ не подходит", "unsure": "🤔 не уверен"}
+
+with tab_label:
+    st.write("Эталонный набор для оценки качества: отметьте, подходит ли вам вакансия. "
+             "Оценку модели здесь специально не показываем, чтобы она не влияла на решение.")
+    try:
+        data = api_get("/eval/golden")
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 404:
+            st.warning("Набор ещё не собран. Выполните scripts\\eval_build_golden.py и обновите страницу.")
+        else:
+            show_error(e)
+        data = None
+    except Exception as e:  # noqa: BLE001
+        show_error(e)
+        data = None
+
+    if data:
+        items = data["items"]
+        st.progress(data["labeled"] / max(data["total"], 1),
+                    text=f"Размечено {data['labeled']} из {data['total']} · подходит {data['fit']}, "
+                         f"не подходит {data['not_fit']}, не уверен {data['unsure']}")
+
+        def caption(i: int) -> str:
+            item = items[i]
+            mark = LABEL_NAMES.get(item["label"], "—")
+            return f"{i + 1}. {item['title'][:60]} — {item['company'][:30]} · {mark}"
+
+        first_open = next((i for i, it in enumerate(items) if not it["label"]), None)
+        if first_open is None:
+            st.success("Все вакансии размечены. Можно запускать оценку качества.")
+        # Без key: при смене «первой неразмеченной» виджет создаётся заново и сам переходит к ней,
+        # а ручной выбор сохраняется, пока ничего не размечено
+        index = st.selectbox("Вакансия", range(len(items)), format_func=caption,
+                             index=first_open if first_open is not None else 0)
+        item = items[index]
+
+        st.markdown(f"### [{item['title']}]({item['url']})")
+        st.caption(item["company"])
+        with st.container(height=420, border=True):
+            st.write(item["description"])
+        note = st.text_input("Комментарий (необязательно)", item.get("note", ""), key=f"note_{item['vacancy_id']}")
+
+        col_fit, col_not, col_unsure, col_clear = st.columns(4)
+        choice = None
+        if col_fit.button("✅ Подходит", use_container_width=True, type="primary"):
+            choice = "fit"
+        if col_not.button("❌ Не подходит", use_container_width=True):
+            choice = "not_fit"
+        if col_unsure.button("🤔 Не уверен", use_container_width=True):
+            choice = "unsure"
+        if col_clear.button("↩️ Снять отметку", use_container_width=True):
+            choice = "clear"
+        if choice:
+            try:
+                api_put(f"/eval/golden/{item['vacancy_id']}",
+                        {"label": None if choice == "clear" else choice, "note": note})
+                st.rerun()
+            except Exception as e:  # noqa: BLE001
+                show_error(e)

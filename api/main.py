@@ -10,9 +10,12 @@
     POST /ask/stream   — то же, но по частям (Server-Sent Events)
     POST /evaluate     — оценка вакансии и черновик письма (шаги 1 и 4)
     GET  /stats        — сколько вакансий, фрагментов и решений по агенту
+    GET  /eval/golden            — эталонный набор вакансий для разметки
+    PUT  /eval/golden/{id}       — отметить вакансию: подходит / не подходит / не уверен
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -29,10 +32,11 @@ from config import settings
 from llm.brain import check_ollama_health, evaluate_and_draft
 from llm.providers import LLMError
 from rag import answer as rag_answer
+from quality import golden
 from rag import search as rag_search
 
-from .schemas import (AskRequest, AskResponse, EvaluateRequest, EvaluateResponse, HealthResponse,
-                      SearchHit, SearchMode, SearchResponse, StatsResponse)
+from .schemas import (AskRequest, AskResponse, EvaluateRequest, EvaluateResponse, GoldenItem, GoldenSet,
+                      HealthResponse, LabelRequest, SearchHit, SearchMode, SearchResponse, StatsResponse)
 
 logger = logging.getLogger("API")
 
@@ -140,3 +144,26 @@ async def stats():
             chunks = (await conn.execute(text("SELECT count(*) FROM vacancy_chunks"))).scalar_one()
     agent = summarize(await database.get_agent_decisions())
     return StatsResponse(vacancies_by_status=by_status, vacancy_texts=texts, rag_chunks=chunks, agent=agent)
+
+
+_golden_lock = asyncio.Lock()   # разметку пишет один запрос за раз — файл не перепутается
+
+
+@app.get("/eval/golden", response_model=GoldenSet, tags=["eval"])
+async def get_golden():
+    items = golden.load(golden.GOLDEN_PATH)
+    if not items:
+        raise HTTPException(status_code=404, detail="Набор не собран. Выполните scripts\\eval_build_golden.py")
+    return GoldenSet(**golden.progress(items), items=items)
+
+
+@app.put("/eval/golden/{vacancy_id}", response_model=GoldenItem, tags=["eval"])
+async def label_golden(vacancy_id: str, body: LabelRequest):
+    async with _golden_lock:
+        items = golden.load(golden.GOLDEN_PATH)
+        try:
+            item = golden.set_label(items, vacancy_id, body.label, body.note)
+        except KeyError:
+            raise HTTPException(status_code=404, detail=f"Вакансии {vacancy_id} нет в наборе") from None
+        golden.save(items, golden.GOLDEN_PATH)
+    return item

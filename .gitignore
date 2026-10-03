@@ -5,6 +5,7 @@
 
 # Персональные данные: резюме, база, логи, собранные вакансии
 resume.txt
+criteria.txt
 *.db
 *.log
 vacancies_collected_*.csv

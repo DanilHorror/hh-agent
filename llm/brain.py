@@ -5,6 +5,7 @@ import time
 import asyncio
 from pydantic import BaseModel, Field, ValidationError
 from config import settings
+from llm import criteria as criteria_mod
 from llm.providers import LLMError, LLMResponse, get_provider, with_retries
 
 
@@ -108,6 +109,10 @@ def extract_user_surname(resume_text: str) -> str:
     return parts[0] if parts else ""
 
 USER_RESUME = load_resume()
+CRITERIA = criteria_mod.load()
+# Список компаний из criteria.txt применяется кодом после ответа модели. Скрипт оценки качества
+# может выключить его, чтобы отдельно измерить вклад критериев в промпте.
+APPLY_COMPANY_FILTER = True
 USER_NAME = extract_user_name(USER_RESUME)
 USER_SURNAME = extract_user_surname(USER_RESUME)
 USER_FULL_NAME = f"{USER_NAME} {USER_SURNAME}".strip()
@@ -256,6 +261,7 @@ async def evaluate_and_draft(vacancy_data: dict) -> dict:
    - Одинаковые формулировки из письма в письмо — пиши каждое письмо своими словами, ориентируясь на конкретную вакансию.
    Пиши так, как реальный кандидат написал бы сам: короче, конкретнее, с разной длиной предложений.
 
+{criteria_mod.prompt_block(CRITERIA)}
 МОЕ РЕЗЮМЕ:
 {USER_RESUME}
 
@@ -304,6 +310,13 @@ async def evaluate_and_draft(vacancy_data: dict) -> dict:
             result["cover_letter"] = "Здравствуйте! Прошу рассмотреть мое резюме на данную позицию."
         
         result["cover_letter"] = finalize_letter(result["cover_letter"])
+
+        blocked = criteria_mod.blocked_company(vacancy_data.get('company', ''), CRITERIA) if APPLY_COMPANY_FILTER else None
+        if blocked and result["relevance_score"] > criteria_mod.COMPANY_SCORE_CAP:
+            print(f"[LLM] Компания из списка нежелательных ({blocked}): {result['relevance_score']} → "
+                  f"{criteria_mod.COMPANY_SCORE_CAP}")
+            result["relevance_score"] = criteria_mod.COMPANY_SCORE_CAP
+            result["reasoning"] = f"Компания из списка нежелательных ({blocked}). {result['reasoning']}"
 
         print(f"[LLM] ✅ Оценка релевантности: {result['relevance_score']}/100")
         return result
