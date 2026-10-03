@@ -1,0 +1,12 @@
+# Переводы строк: в репозитории — LF, в рабочей копии Windows — как удобно редактору.
+* text=auto
+# Эти файлы читаются внутри Linux-контейнеров и в CI — всегда LF
+Dockerfile text eol=lf
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+# .bat — только CRLF, иначе cmd.exe может споткнуться
+*.bat text eol=crlf
+# Двоичные файлы не трогать
+*.png binary
+*.jpg binary

@@ -81,3 +81,17 @@ async def test_chat_monitoring():
             if answer == 'y':
                 deleted = await monitor.delete_rejected_chats(result['rejected_chats'])
                 logger.info(f"\n✅ Удалено чатов: {deleted}/{len(result['rejected_chats'])}")
+            else:
+                logger.info("Удаление отменено")
+
+    except Exception as e:
+        logger.error(f"❌ Ошибка теста чатов: {e}")
+        raise
+    finally:
+        await worker.close()
+        logger.info("Браузер закрыт")
+
+
+if __name__ == "__main__":
+    # Ручная проверка с живым браузером и профилем hh.ru; в pytest не запускается (см. pytest.ini)
+    asyncio.run(test_chat_monitoring())
