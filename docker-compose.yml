@@ -1,7 +1,15 @@
 # Локальная инфраструктура hh-агента.
-# Запуск:     docker compose up -d
-# Состояние:  docker compose ps
-# Остановка:  docker compose stop      (данные сохраняются в томе pgdata)
+#
+# Только база для бота:      docker compose up -d
+# База + сервисы в Docker:   docker compose --profile services up -d --build
+#     API      http://localhost:8000/docs
+#     демо     http://localhost:8501
+#     MCP      http://localhost:8765/mcp   (Streamable HTTP)
+# Состояние:  docker compose --profile services ps
+# Остановка:  docker compose --profile services stop      (данные сохраняются в томе pgdata)
+#
+# Бот, откликающийся на hh.ru, запускается на компьютере (нужен браузер с профилем, где выполнен вход).
+# Ollama тоже работает на компьютере (видеокарта): сервисы обращаются к ней через host.docker.internal.
 services:
   postgres:
     # Postgres 17 с уже установленным расширением pgvector (векторный поиск для RAG)
@@ -22,6 +30,70 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  # ---------- сервисы (профиль services) ----------
+  api:
+    build: .
+    image: hh-agent-services
+    profiles: ["services"]
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file: .env
+    environment: &service-env
+      # из контейнера база доступна по имени сервиса, Ollama и Langfuse — через хост
+      DATABASE_URL: postgresql+asyncpg://hh:${POSTGRES_PASSWORD:-hh_local_dev}@postgres:5432/hh_agent
+      OLLAMA_HOST: http://host.docker.internal:11434
+      LANGFUSE_HOST: http://host.docker.internal:3000
+      RAG_DEVICE: cpu
+      HF_HOME: /hf-cache
+    volumes: &service-volumes
+      # личные файлы — только для чтения и только с этого компьютера, в образ они не попадают
+      - ./resume.txt:/app/resume.txt:ro
+      - ./criteria.txt:/app/criteria.txt:ro
+      - ./russian_trusted_root_ca.cer:/app/russian_trusted_root_ca.cer:ro
+      # модели поиска (~2,5 ГБ) не скачиваются заново: общий кэш Hugging Face с компьютера
+      - ${USERPROFILE:-~}/.cache/huggingface:/hf-cache
+    extra_hosts: &service-hosts
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  demo:
+    image: hh-agent-services
+    profiles: ["services"]
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_started
+    environment:
+      HH_API_URL: http://api:8000
+    command: ["python", "-m", "streamlit", "run", "demo/app.py", "--server.address", "0.0.0.0",
+              "--server.port", "8501", "--server.headless", "true", "--browser.gatherUsageStats", "false"]
+    ports:
+      - "127.0.0.1:8501:8501"
+
+  mcp:
+    image: hh-agent-services
+    profiles: ["services"]
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file: .env
+    environment: *service-env
+    volumes: *service-volumes
+    extra_hosts: *service-hosts
+    command: ["python", "-m", "mcp_server.server", "--http", "--host", "0.0.0.0", "--port", "8765"]
+    ports:
+      - "127.0.0.1:8765:8765"
 
 volumes:
   pgdata:

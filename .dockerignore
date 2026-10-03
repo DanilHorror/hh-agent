@@ -1,0 +1,28 @@
+# Окружение и служебное
+venv/
+__pycache__/
+*.pyc
+.git/
+.pytest_cache/
+*outputs/
+
+
+# Секреты и личные данные — подключаются томами при запуске, в образ не попадают
+.env
+*.cer
+*.pem
+resume.txt
+criteria.txt
+
+# Данные бота: база, логи, профили браузера, выгрузки
+*.db
+*.log
+ollama.lock
+browser_profile/
+browser_profile_habr/
+vacancies_collected_*.csv
+keywords_report*.csv
+debug_*.png
+test/*.db
+test/*.png
+test/browser_profile/
