@@ -1,0 +1,42 @@
+{
+ "gigachat-companies": {
+  "137515851": {
+   "agree": true,
+   "judge_verdict": "invented"
+  },
+  "136742628": {
+   "agree": false,
+   "judge_verdict": "invented"
+  },
+  "136527384": {
+   "agree": true,
+   "judge_verdict": "ok"
+  },
+  "137339746": {
+   "agree": false,
+   "judge_verdict": "ok"
+  },
+  "137433305": {
+   "agree": false,
+   "judge_verdict": "invented"
+  }
+ },
+ "ollama-companies": {
+  "137312587": {
+   "agree": true,
+   "judge_verdict": "ok"
+  },
+  "137006864": {
+   "agree": true,
+   "judge_verdict": "ok"
+  },
+  "136586722": {
+   "agree": true,
+   "judge_verdict": "invented"
+  },
+  "136742628": {
+   "agree": false,
+   "judge_verdict": "invented"
+  }
+ }
+}

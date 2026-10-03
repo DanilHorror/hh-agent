@@ -1,0 +1,191 @@
+{
+ "run": "gigachat-letters-v2",
+ "judge": "gigachat/GigaChat-2-Pro",
+ "version": "v2",
+ "results": {
+  "137244722": {
+   "invented_facts": [
+    "тестирование корпоративных веб-приложений"
+   ],
+   "verdict": "invented"
+  },
+  "136450188": {
+   "invented_facts": [],
+   "verdict": "ok"
+  },
+  "137343141": {
+   "invented_facts": [],
+   "verdict": "ok"
+  },
+  "134845170": {
+   "invented_facts": [],
+   "verdict": "ok"
+  },
+  "137431426": {
+   "invented_facts": [
+    "владею Jira и Confluence на уровне самостоятельного ведения проектов"
+   ],
+   "verdict": "invented"
+  },
+  "137515851": {
+   "invented_facts": [
+    "Владение инструментами для анализа трафика и генерации нагрузки (tcpdump, Wireshark, TRex)"
+   ],
+   "verdict": "invented"
+  },
+  "129586923": {
+   "invented_facts": [],
+   "verdict": "ok"
+  },
+  "136909870": {
+   "invented_facts": [],
+   "verdict": "ok"
+  },
+  "134044787": {
+   "invented_facts": [],
+   "verdict": "ok"
+  },
+  "137339746": {
+   "invented_facts": [
+    "организацией тестирования",
+    "распределением задач в команде",
+    "контролем качества релизов"
+   ],
+   "verdict": "invented"
+  },
+  "136897400": {
+   "invented_facts": [],
+   "verdict": "ok"
+  },
+  "137476566": {
+   "invented_facts": [
+    "практический опыт настройки сетевых решений на основе Linux",
+    "управления серверами и виртуальными машинами",
+    "автоматизации типовых задач через скрипты и инструменты вроде Ansible и Bash"
+   ],
+   "verdict": "invented"
+  },
+  "137500512": {
+   "invented_facts": [],
+   "verdict": "ok"
+  },
+  "136586722": {
+   "invented_facts": [],
+   "verdict": "ok"
+  },
+  "137006864": {
+   "invented_facts": [
+    "создание и автоматизация сотен UI-тестов на Java (Selenium, JUnit, TestNG)",
+    "уверенная работа с командной строкой Linux, свободное использование Bash, SSH, Grep, Netstat, Tcpdump",
+    "умение быстро находить причины сбоев по логам ELK и OpenSearch"
+   ],
+   "verdict": "invented"
+  },
+  "135031592": {
+   "invented_facts": [],
+   "verdict": "ok"
+  },
+  "137312587": {
+   "invented_facts": [],
+   "verdict": "ok"
+  },
+  "137380702": {
+   "invented_facts": [],
+   "verdict": "ok"
+  },
+  "132584216": {
+   "invented_facts": [],
+   "verdict": "ok"
+  },
+  "137300476": {
+   "invented_facts": [],
+   "verdict": "ok"
+  },
+  "137321307": {
+   "invented_facts": [
+    "читаю код на Python и Java"
+   ],
+   "verdict": "invented"
+  },
+  "136638570": {
+   "invented_facts": [],
+   "verdict": "ok"
+  },
+  "137213688": {
+   "invented_facts": [],
+   "verdict": "ok"
+  },
+  "135192630": {
+   "invented_facts": [],
+   "verdict": "ok"
+  },
+  "135704370": {
+   "invented_facts": [],
+   "verdict": "ok"
+  },
+  "136609487": {
+   "invented_facts": [
+    "владею Bash"
+   ],
+   "verdict": "invented"
+  },
+  "137340055": {
+   "invented_facts": [],
+   "verdict": "ok"
+  },
+  "137423056": {
+   "invented_facts": [],
+   "verdict": "ok"
+  },
+  "136478654": {
+   "invented_facts": [],
+   "verdict": "ok"
+  },
+  "137247673": {
+   "invented_facts": [],
+   "verdict": "ok"
+  },
+  "135417116": {
+   "invented_facts": [],
+   "verdict": "ok"
+  },
+  "136197859": {
+   "invented_facts": [],
+   "verdict": "ok"
+  },
+  "136742628": {
+   "invented_facts": [
+    "разработку и внедрение более 47 автотестов на Python"
+   ],
+   "verdict": "invented"
+  },
+  "136529472": {
+   "invented_facts": [],
+   "verdict": "ok"
+  },
+  "137454298": {
+   "invented_facts": [],
+   "verdict": "ok"
+  },
+  "136456809": {
+   "invented_facts": [
+    "трёхлетний опыт автоматизации тестирования на Java"
+   ],
+   "verdict": "invented"
+  },
+  "136306982": {
+   "invented_facts": [],
+   "verdict": "ok"
+  },
+  "137433305": {
+   "invented_facts": [
+    "понимание клиент-серверной архитектуры"
+   ],
+   "verdict": "invented"
+  },
+  "136527384": {
+   "invented_facts": [],
+   "verdict": "ok"
+  }
+ }
+}

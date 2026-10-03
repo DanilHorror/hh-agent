@@ -1,0 +1,765 @@
+{
+ "ollama-companies": {
+  "137244722": {
+   "invented": false,
+   "facts": []
+  },
+  "136450188": {
+   "invented": true,
+   "facts": [
+    "5 лет специализировался на тестировании и автоматизации (QA-стаж 3 года 10 месяцев)"
+   ]
+  },
+  "137343141": {
+   "invented": false,
+   "facts": []
+  },
+  "134845170": {
+   "invented": false,
+   "facts": []
+  },
+  "137431426": {
+   "invented": true,
+   "facts": [
+    "Confluence",
+    "опыт в embedded-программировании как преимущество"
+   ]
+  },
+  "137515851": {
+   "invented": false,
+   "facts": []
+  },
+  "129586923": {
+   "invented": false,
+   "facts": []
+  },
+  "136909870": {
+   "invented": false,
+   "facts": []
+  },
+  "134044787": {
+   "invented": false,
+   "facts": []
+  },
+  "137339746": {
+   "invented": false,
+   "facts": []
+  },
+  "136897400": {
+   "invented": false,
+   "facts": []
+  },
+  "137476566": {
+   "invented": true,
+   "facts": [
+    "опыт тестирования системных и сетевых компонентов"
+   ]
+  },
+  "137500512": {
+   "invented": false,
+   "facts": []
+  },
+  "136586722": {
+   "invented": true,
+   "facts": [
+    "pytest и asyncio",
+    "Kubernetes и DevOps"
+   ]
+  },
+  "137006864": {
+   "invented": false,
+   "facts": []
+  },
+  "135031592": {
+   "invented": false,
+   "facts": []
+  },
+  "137312587": {
+   "invented": true,
+   "facts": [
+    "CI-конвейер сократил время проектирования тест-кейсов на 43% (в резюме: LLM-инструменты, 6,2 → 4,3 ч)"
+   ]
+  },
+  "137380702": {
+   "invented": false,
+   "facts": []
+  },
+  "132584216": {
+   "invented": false,
+   "facts": []
+  },
+  "137300476": {
+   "invented": false,
+   "facts": []
+  },
+  "137321307": {
+   "invented": false,
+   "facts": []
+  },
+  "136638570": {
+   "invented": false,
+   "facts": []
+  },
+  "137213688": {
+   "invented": false,
+   "facts": []
+  },
+  "135192630": {
+   "invented": true,
+   "facts": [
+    "более 5 лет опыта QA-инженером (в резюме 3 года 10 месяцев)"
+   ]
+  },
+  "135704370": {
+   "invented": false,
+   "facts": []
+  },
+  "136609487": {
+   "invented": false,
+   "facts": []
+  },
+  "137340055": {
+   "invented": true,
+   "facts": [
+    "Selenide",
+    "REST Assured",
+    "Allure"
+   ]
+  },
+  "137423056": {
+   "invented": false,
+   "facts": []
+  },
+  "136478654": {
+   "invented": false,
+   "facts": []
+  },
+  "137247673": {
+   "invented": false,
+   "facts": []
+  },
+  "135417116": {
+   "invented": false,
+   "facts": []
+  },
+  "136197859": {
+   "invented": false,
+   "facts": []
+  },
+  "136742628": {
+   "invented": true,
+   "facts": [
+    "OSPF и BGP"
+   ]
+  },
+  "136529472": {
+   "invented": false,
+   "facts": []
+  },
+  "137454298": {
+   "invented": false,
+   "facts": []
+  },
+  "136456809": {
+   "invented": false,
+   "facts": []
+  },
+  "136306982": {
+   "invented": false,
+   "facts": []
+  },
+  "137433305": {
+   "invented": false,
+   "facts": []
+  },
+  "136527384": {
+   "invented": false,
+   "facts": []
+  }
+ },
+ "gigachat-companies": {
+  "137244722": {
+   "invented": true,
+   "facts": [
+    "создал сотни автотестов (в резюме 47)"
+   ]
+  },
+  "136450188": {
+   "invented": false,
+   "facts": []
+  },
+  "137343141": {
+   "invented": false,
+   "facts": []
+  },
+  "134845170": {
+   "invented": false,
+   "facts": []
+  },
+  "137431426": {
+   "invented": true,
+   "facts": [
+    "ручное тестирование решений «в железе»",
+    "работа в Agile-командах",
+    "почти четыре года автоматизации на Python"
+   ]
+  },
+  "137515851": {
+   "invented": true,
+   "facts": [
+    "последние три года — инфраструктурные продукты и сетевое ПО",
+    "настройка VLAN и маршрутизации",
+    "WireShark, tcpdump",
+    "нагрузочное тестирование"
+   ]
+  },
+  "129586923": {
+   "invented": false,
+   "facts": []
+  },
+  "136909870": {
+   "invented": true,
+   "facts": [
+    "десятки UI-тестов на Python",
+    "BrowserStack"
+   ]
+  },
+  "134044787": {
+   "invented": false,
+   "facts": []
+  },
+  "137339746": {
+   "invented": true,
+   "facts": [
+    "планирование и координация тестирования, распределение задач в команде"
+   ]
+  },
+  "136897400": {
+   "invented": false,
+   "facts": []
+  },
+  "137476566": {
+   "invented": true,
+   "facts": [
+    "регулярно работаю с гипервизорами, виртуализацией, Kubernetes"
+   ]
+  },
+  "137500512": {
+   "invented": false,
+   "facts": []
+  },
+  "136586722": {
+   "invented": true,
+   "facts": [
+    "pytest и asyncio",
+    "регулярно провожу code review",
+    "выстраиваю фреймворки автоматизации"
+   ]
+  },
+  "137006864": {
+   "invented": true,
+   "facts": [
+    "bash, tcpdump, curl",
+    "регулярно тестировал распределённые клиент-серверные системы"
+   ]
+  },
+  "135031592": {
+   "invented": false,
+   "facts": []
+  },
+  "137312587": {
+   "invented": true,
+   "facts": [
+    "автоматизировал сотни UI- и API-тестов (в резюме 47 автотестов и 80 проверок API)"
+   ]
+  },
+  "137380702": {
+   "invented": false,
+   "facts": []
+  },
+  "132584216": {
+   "invented": false,
+   "facts": []
+  },
+  "137300476": {
+   "invented": true,
+   "facts": [
+    "Confluence"
+   ]
+  },
+  "137321307": {
+   "invented": true,
+   "facts": [
+    "Confluence"
+   ]
+  },
+  "136638570": {
+   "invented": false,
+   "facts": []
+  },
+  "137213688": {
+   "invented": false,
+   "facts": []
+  },
+  "135192630": {
+   "invented": false,
+   "facts": []
+  },
+  "135704370": {
+   "invented": false,
+   "facts": []
+  },
+  "136609487": {
+   "invented": true,
+   "facts": [
+    "тестирование микросервисов",
+    "Swagger",
+    "GROUP BY, HAVING",
+    "MongoDB",
+    "GitLab"
+   ]
+  },
+  "137340055": {
+   "invented": true,
+   "facts": [
+    "Selenide",
+    "REST Assured"
+   ]
+  },
+  "137423056": {
+   "invented": false,
+   "facts": []
+  },
+  "136478654": {
+   "invented": false,
+   "facts": []
+  },
+  "137247673": {
+   "invented": false,
+   "facts": []
+  },
+  "135417116": {
+   "invented": false,
+   "facts": []
+  },
+  "136197859": {
+   "invented": false,
+   "facts": []
+  },
+  "136742628": {
+   "invented": true,
+   "facts": [
+    "pytest",
+    "виртуальные лаборатории",
+    "OSPF, BGP"
+   ]
+  },
+  "136529472": {
+   "invented": false,
+   "facts": []
+  },
+  "137454298": {
+   "invented": true,
+   "facts": [
+    "Redis, Kafka"
+   ]
+  },
+  "136456809": {
+   "invented": false,
+   "facts": []
+  },
+  "136306982": {
+   "invented": false,
+   "facts": []
+  },
+  "137433305": {
+   "invented": true,
+   "facts": [
+    "Agile"
+   ]
+  },
+  "136527384": {
+   "invented": true,
+   "facts": [
+    "работа с требованиями регуляторов",
+    "развёртывание тестовых сред, администрирование служб",
+    "выстраивал процессы и стандарты тестирования с нуля"
+   ]
+  }
+ },
+ "ollama-letters-v2": {
+  "137244722": {
+   "invented": false,
+   "facts": []
+  },
+  "136450188": {
+   "invented": false,
+   "facts": []
+  },
+  "137343141": {
+   "invented": true,
+   "facts": [
+    "опыт QA более 5 лет (в резюме 3 года 10 месяцев)"
+   ]
+  },
+  "134845170": {
+   "invented": false,
+   "facts": []
+  },
+  "137431426": {
+   "invented": false,
+   "facts": []
+  },
+  "137515851": {
+   "invented": true,
+   "facts": [
+    "опыт сетевого тестирования и анализа производительности сетевых приложений"
+   ]
+  },
+  "129586923": {
+   "invented": true,
+   "facts": [
+    "5 лет опыта QA (в резюме 3 года 10 месяцев)"
+   ]
+  },
+  "136909870": {
+   "invented": false,
+   "facts": []
+  },
+  "134044787": {
+   "invented": false,
+   "facts": []
+  },
+  "137339746": {
+   "invented": false,
+   "facts": []
+  },
+  "136897400": {
+   "invented": true,
+   "facts": [
+    "работа с системами на C/C++",
+    "GitLab CI/CD"
+   ]
+  },
+  "137476566": {
+   "invented": true,
+   "facts": [
+    "работа с системами виртуализации"
+   ]
+  },
+  "137500512": {
+   "invented": false,
+   "facts": []
+  },
+  "136586722": {
+   "invented": false,
+   "facts": []
+  },
+  "137006864": {
+   "invented": false,
+   "facts": []
+  },
+  "135031592": {
+   "invented": true,
+   "facts": [
+    "контейнерная оркестрация",
+    "системы виртуализации"
+   ]
+  },
+  "137312587": {
+   "invented": false,
+   "facts": []
+  },
+  "137380702": {
+   "invented": false,
+   "facts": []
+  },
+  "132584216": {
+   "invented": false,
+   "facts": []
+  },
+  "137300476": {
+   "invented": true,
+   "facts": [
+    "Grafana, Rancher"
+   ]
+  },
+  "137321307": {
+   "invented": false,
+   "facts": []
+  },
+  "136638570": {
+   "invented": true,
+   "facts": [
+    "опыт системного и сетевого тестирования"
+   ]
+  },
+  "137213688": {
+   "invented": false,
+   "facts": []
+  },
+  "135192630": {
+   "invented": false,
+   "facts": []
+  },
+  "135704370": {
+   "invented": false,
+   "facts": []
+  },
+  "136609487": {
+   "invented": false,
+   "facts": []
+  },
+  "137340055": {
+   "invented": false,
+   "facts": []
+  },
+  "137423056": {
+   "invented": true,
+   "facts": [
+    "знаком с Pytest"
+   ]
+  },
+  "136478654": {
+   "invented": false,
+   "facts": []
+  },
+  "137247673": {
+   "invented": false,
+   "facts": []
+  },
+  "135417116": {
+   "invented": false,
+   "facts": []
+  },
+  "136197859": {
+   "invented": false,
+   "facts": []
+  },
+  "136742628": {
+   "invented": true,
+   "facts": [
+    "Jenkins"
+   ]
+  },
+  "136529472": {
+   "invented": false,
+   "facts": []
+  },
+  "137454298": {
+   "invented": true,
+   "facts": [
+    "тестирование мобильных приложений"
+   ]
+  },
+  "136456809": {
+   "invented": false,
+   "facts": []
+  },
+  "136306982": {
+   "invented": false,
+   "facts": []
+  },
+  "137433305": {
+   "invented": false,
+   "facts": []
+  },
+  "136527384": {
+   "invented": false,
+   "facts": []
+  }
+ },
+ "gigachat-letters-v2": {
+  "137244722": {
+   "invented": false,
+   "facts": []
+  },
+  "136450188": {
+   "invented": false,
+   "facts": []
+  },
+  "137343141": {
+   "invented": false,
+   "facts": []
+  },
+  "134845170": {
+   "invented": false,
+   "facts": []
+  },
+  "137431426": {
+   "invented": true,
+   "facts": [
+    "тестирование решений «в железе»",
+    "Confluence"
+   ]
+  },
+  "137515851": {
+   "invented": true,
+   "facts": [
+    "сети L3–L7",
+    "tcpdump, Wireshark, TRex",
+    "автоматизация на Python"
+   ]
+  },
+  "129586923": {
+   "invented": true,
+   "facts": [
+    "Agile-методология"
+   ]
+  },
+  "136909870": {
+   "invented": true,
+   "facts": [
+    "автоматизировал более 40 UI-сценариев на Java и Python (Playwright)",
+    "BrowserStack"
+   ]
+  },
+  "134044787": {
+   "invented": false,
+   "facts": []
+  },
+  "137339746": {
+   "invented": true,
+   "facts": [
+    "организация тестирования и распределение задач в команде"
+   ]
+  },
+  "136897400": {
+   "invented": false,
+   "facts": []
+  },
+  "137476566": {
+   "invented": true,
+   "facts": [
+    "Ansible и Bash",
+    "управление виртуальными машинами"
+   ]
+  },
+  "137500512": {
+   "invented": false,
+   "facts": []
+  },
+  "136586722": {
+   "invented": false,
+   "facts": []
+  },
+  "137006864": {
+   "invented": true,
+   "facts": [
+    "сотни UI-тестов (в резюме 47)",
+    "Bash, SSH, grep, netstat, tcpdump",
+    "ELK, OpenSearch",
+    "крупные распределённые системы"
+   ]
+  },
+  "135031592": {
+   "invented": false,
+   "facts": []
+  },
+  "137312587": {
+   "invented": true,
+   "facts": [
+    "работа с микросервисами"
+   ]
+  },
+  "137380702": {
+   "invented": false,
+   "facts": []
+  },
+  "132584216": {
+   "invented": false,
+   "facts": []
+  },
+  "137300476": {
+   "invented": false,
+   "facts": []
+  },
+  "137321307": {
+   "invented": false,
+   "facts": []
+  },
+  "136638570": {
+   "invented": false,
+   "facts": []
+  },
+  "137213688": {
+   "invented": false,
+   "facts": []
+  },
+  "135192630": {
+   "invented": false,
+   "facts": []
+  },
+  "135704370": {
+   "invented": false,
+   "facts": []
+  },
+  "136609487": {
+   "invented": true,
+   "facts": [
+    "Bash"
+   ]
+  },
+  "137340055": {
+   "invented": true,
+   "facts": [
+    "опыт проектов с высокой нагрузкой"
+   ]
+  },
+  "137423056": {
+   "invented": false,
+   "facts": []
+  },
+  "136478654": {
+   "invented": false,
+   "facts": []
+  },
+  "137247673": {
+   "invented": false,
+   "facts": []
+  },
+  "135417116": {
+   "invented": false,
+   "facts": []
+  },
+  "136197859": {
+   "invented": false,
+   "facts": []
+  },
+  "136742628": {
+   "invented": true,
+   "facts": [
+    "пятилетний опыт автотестов",
+    "47 автотестов на Python (в резюме — на Java)",
+    "PyTest",
+    "Wireshark"
+   ]
+  },
+  "136529472": {
+   "invented": false,
+   "facts": []
+  },
+  "137454298": {
+   "invented": false,
+   "facts": []
+  },
+  "136456809": {
+   "invented": false,
+   "facts": []
+  },
+  "136306982": {
+   "invented": false,
+   "facts": []
+  },
+  "137433305": {
+   "invented": false,
+   "facts": []
+  },
+  "136527384": {
+   "invented": true,
+   "facts": [
+    "тестирование толстого клиента"
+   ]
+  }
+ }
+}
