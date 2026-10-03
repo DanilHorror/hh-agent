@@ -14,3 +14,8 @@ def no_letter_guard(monkeypatch):
     monkeypatch.setattr(settings, "letter_guard", False)
     # защита от мусора отсекла бы короткие тестовые вакансии; её тесты — test_safety.py
     monkeypatch.setattr(settings, "input_defense", False)
+    # трассы в Langfuse из тестов не отправляем
+    from llm import tracing
+    monkeypatch.setattr(settings, "langfuse_public_key", "")
+    monkeypatch.setattr(settings, "langfuse_secret_key", "")
+    tracing.reset()

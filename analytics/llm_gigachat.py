@@ -102,6 +102,20 @@ def resolve_cascade(starting_model: str, cascade: List[str]) -> List[str]:
     return [starting_model, *cascade]
 
 
+def _usage_tokens(usage) -> tuple:
+    """(токены промпта, токены ответа). Новый SDK называет поля input_tokens/output_tokens,
+    старый — prompt_tokens/completion_tokens; читаем оба варианта."""
+    if usage is None:
+        return None, None
+    prompt = getattr(usage, "input_tokens", None)
+    completion = getattr(usage, "output_tokens", None)
+    if prompt is None:
+        prompt = getattr(usage, "prompt_tokens", None)
+    if completion is None:
+        completion = getattr(usage, "completion_tokens", None)
+    return prompt, completion
+
+
 def _default_send_fn(credentials: str, ca_bundle_file: Optional[str], timeout: float):
     """Настоящий вызов через SDK gigachat: send(model, messages) -> текст ответа.
 
@@ -131,8 +145,7 @@ def _default_send_fn(credentials: str, ca_bundle_file: Optional[str], timeout: f
         except Exception:  # noqa: BLE001 — старые версии SDK: temperature/max_tokens на верхнем уровне
             request = ChatCompletionRequest(messages=chat_messages, temperature=temperature, max_tokens=max_tokens)
         response = client.chat.create(request)
-        usage = getattr(response, "usage", None)
-        send.last_usage = (getattr(usage, "prompt_tokens", None), getattr(usage, "completion_tokens", None))
+        send.last_usage = _usage_tokens(getattr(response, "usage", None))
         return response.messages[0].content[0].text
 
     send.close = stack.close  # type: ignore[attr-defined]

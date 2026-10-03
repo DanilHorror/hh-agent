@@ -266,3 +266,11 @@ def test_own_process_is_alive():
     from llm.providers import ollama_provider
 
     assert ollama_provider._pid_alive(os.getpid()) is True
+
+
+def test_gigachat_usage_both_sdk_field_names():
+    from types import SimpleNamespace
+    from analytics.llm_gigachat import _usage_tokens
+    assert _usage_tokens(SimpleNamespace(input_tokens=120, output_tokens=30)) == (120, 30)          # новый SDK
+    assert _usage_tokens(SimpleNamespace(prompt_tokens=100, completion_tokens=20)) == (100, 20)     # старый SDK
+    assert _usage_tokens(None) == (None, None)

@@ -67,9 +67,26 @@ def build_messages(question: str, hits: list[Hit]) -> list[dict]:
 
 
 async def answer(question: str, k: int = 6, mode: str = "hybrid_rerank") -> Answer:
+    """Ответ о рынке по найденным фрагментам; в Langfuse — трасса rag: поиск → ответ модели."""
+    from llm import tracing
+
+    with tracing.span("rag_ask", input=question, metadata={"mode": mode, "k": k}) as sp:
+        with tracing.trace("rag"):
+            result = await _answer(question, k, mode)
+        sp.update(output=result.text, metadata={"sources": [h.vacancy_id for h in result.sources],
+                                                "timings": {n: round(t, 2) for n, t in result.timings.items()}})
+    return result
+
+
+async def _answer(question: str, k: int, mode: str) -> Answer:
+    from llm import tracing
+
     logger.info("поиск фрагментов...")
-    result = await search(question, k=k, mode=mode)
-    result.hits = merge_by_vacancy(result.hits)
+    with tracing.span("rag_search", input=question) as sp:
+        result = await search(question, k=k, mode=mode)
+        result.hits = merge_by_vacancy(result.hits)
+        sp.update(output=[{"vacancy_id": h.vacancy_id, "section": h.section} for h in result.hits],
+                  metadata={"timings": {n: round(t, 2) for n, t in result.timings.items()}})
     logger.info(f"найдено {len(result.hits)} фрагментов, время: "
                 + ", ".join(f"{name} {sec:.1f} с" for name, sec in result.timings.items()))
     if not result.hits:
@@ -77,7 +94,8 @@ async def answer(question: str, k: int = 6, mode: str = "hybrid_rerank") -> Answ
     from llm.brain import ask_llm  # импорт здесь: поиск можно тестировать без LLM-слоя
     logger.info("запрос к LLM...")
     started = time.time()
-    response = await ask_llm(build_messages(question, result.hits), temperature=0.2, max_tokens=700)
+    response = await ask_llm(build_messages(question, result.hits), temperature=0.2, max_tokens=700,
+                             name="rag_answer")
     timings = dict(result.timings, llm=time.time() - started)
     logger.info(f"ответ LLM за {timings['llm']:.1f} с")
     return Answer(question, response.text.strip() or NO_ANSWER, result.hits, timings)

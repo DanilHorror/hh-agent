@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, ValidationError
 from config import settings
 from llm import criteria as criteria_mod
 from llm.providers import LLMError, LLMResponse, create_provider, get_provider, with_retries
-from llm import letter_guard, safety
+from llm import letter_guard, safety, tracing
 from quality import letters as letter_checks
 
 
@@ -60,12 +60,18 @@ def _log_usage(response: LLMResponse, started: float) -> None:
 
 
 async def ask_llm(messages: list, schema=None, *, json_mode: bool = False,
-                  temperature: float = 0.3, max_tokens: int = 1500) -> LLMResponse:
-    """Один запрос к модели из .env (LLM_PROVIDER) с повтором при временных сбоях."""
+                  temperature: float = 0.3, max_tokens: int = 1500, name: str = "llm") -> LLMResponse:
+    """Один запрос к модели из .env (LLM_PROVIDER) с повтором при временных сбоях.
+    name — имя шага в трассе Langfuse (evaluate, fix_letter, rag_answer…)."""
     provider = get_provider()
     started = time.time()
-    response = await with_retries(lambda: provider.complete(
-        messages, schema, json_mode=json_mode, temperature=temperature, max_tokens=max_tokens))
+    with tracing.generation(name, model=provider.model, input=messages,
+                            model_parameters={"temperature": temperature, "max_tokens": max_tokens},
+                            metadata={"provider": provider.name}) as gen:
+        response = await with_retries(lambda: provider.complete(
+            messages, schema, json_mode=json_mode, temperature=temperature, max_tokens=max_tokens))
+        gen.update(output=response.text, usage_details=tracing.usage(response.prompt_tokens,
+                                                                     response.completion_tokens))
     _log_usage(response, started)
     return response
 
@@ -223,13 +229,30 @@ async def rewrite_letter(vacancy_data: dict, previous_letter: str, feedback: str
 {previous_letter}
 """
     response = await ask_llm([{'role': 'user', 'content': prompt}], temperature=0.6,
-                             max_tokens=settings.ollama_num_predict)
+                             max_tokens=settings.ollama_num_predict, name="rewrite_letter")
     text = response.text.strip().strip('"').strip()
     return finalize_letter(text) if text else previous_letter
 
 
 async def rewrite_letter_guarded(vacancy_data: dict, previous_letter: str, feedback: str) -> tuple[str, str]:
     """«Переписать» в Telegram: новое письмо по замечанию + страж. Возвращает (письмо, предупреждение)."""
+    with tracing.span("rewrite_letter", input={"feedback": feedback, "letter": previous_letter}) as sp:
+        with tracing.trace("vacancy", session_id=_session(vacancy_data), metadata=_trace_meta(vacancy_data)):
+            letter, warning = await _rewrite_letter_guarded(vacancy_data, previous_letter, feedback)
+        sp.update(output=letter, metadata={"warning": warning})
+    return letter, warning
+
+
+def _session(vacancy_data: dict):
+    vid = vacancy_data.get('vacancy_id')
+    return f"vacancy-{vid}" if vid else None
+
+
+def _trace_meta(vacancy_data: dict) -> dict:
+    return {"title": str(vacancy_data.get('title', ''))[:150], "company": str(vacancy_data.get('company', ''))[:150]}
+
+
+async def _rewrite_letter_guarded(vacancy_data: dict, previous_letter: str, feedback: str) -> tuple[str, str]:
     letter = await rewrite_letter(vacancy_data, previous_letter, feedback)
     warnings = []
     if settings.input_defense:
@@ -272,7 +295,7 @@ async def fix_letter(vacancy_data: dict, letter: str, invented: list[str], clich
 {letter}
 """
     response = await ask_llm([{'role': 'user', 'content': prompt}], temperature=0.3,
-                             max_tokens=settings.ollama_num_predict)
+                             max_tokens=settings.ollama_num_predict, name="fix_letter")
     text = response.text.strip().strip('"').strip()
     return finalize_letter(text) if text else letter
 
@@ -300,7 +323,9 @@ async def guard_cover_letter(vacancy_data: dict, letter: str, judge=None):
     title = vacancy_data.get('title', '')
 
     async def check(text: str) -> list[str]:
-        judgment = await with_retries(lambda: letter_checks.judge_letter_v2(judge, USER_RESUME, title, text))
+        with tracing.generation("judge", model=judge.model, input=text, metadata={"provider": judge.name}) as gen:
+            judgment = await with_retries(lambda: letter_checks.judge_letter_v2(judge, USER_RESUME, title, text))
+            gen.update(output={"verdict": judgment.verdict, "invented": judgment.invented_facts})
         return judgment.invented_facts
 
     async def fix(text: str, invented: list[str], cliches: list[str]) -> str:
@@ -308,9 +333,12 @@ async def guard_cover_letter(vacancy_data: dict, letter: str, judge=None):
 
     started = time.time()
     try:
-        result = await letter_guard.guard_letter(letter, check=check, fix=fix,
-                                                 find_cliches=letter_checks.find_cliches,
-                                                 max_rounds=settings.letter_guard_rounds)
+        with tracing.span("letter_guard", input=letter) as sp:
+            result = await letter_guard.guard_letter(letter, check=check, fix=fix,
+                                                     find_cliches=letter_checks.find_cliches,
+                                                     max_rounds=settings.letter_guard_rounds)
+            sp.update(output=result.letter, metadata={"clean": result.clean, "rounds": result.rounds,
+                                                      "invented": result.invented})
     except Exception as e:  # noqa: BLE001 — страж не должен ронять обработку вакансии
         print(f"[Страж] не сработал ({type(e).__name__}: {str(e)[:200]}) — письмо без проверки")
         return None
@@ -332,6 +360,18 @@ async def check_ollama_health(timeout: float = 5.0) -> tuple[bool, str]:
 
 
 async def evaluate_and_draft(vacancy_data: dict, guard: bool = True) -> dict:
+    """Оценка вакансии и черновик письма; в Langfuse — одна трасса на вакансию (session_id = vacancy-<id>)."""
+    with tracing.span("evaluate_vacancy", input={"title": vacancy_data.get('title'),
+                                                 "company": vacancy_data.get('company')}) as sp:
+        with tracing.trace("vacancy", session_id=_session(vacancy_data), metadata=_trace_meta(vacancy_data)):
+            result = await _evaluate_and_draft(vacancy_data, guard)
+        sp.update(output={"score": result.get("relevance_score"), "reasoning": result.get("reasoning"),
+                          "letter": result.get("cover_letter")},
+                  metadata={"warning": result.get("letter_warning", ""), "error": bool(result.get("error"))})
+    return result
+
+
+async def _evaluate_and_draft(vacancy_data: dict, guard: bool = True) -> dict:
     """Оценивает релевантность и генерирует черновик письма"""
     
     if not vacancy_data.get('description') or vacancy_data['description'] == "Описание отсутствует":
@@ -403,7 +443,7 @@ async def evaluate_and_draft(vacancy_data: dict, guard: bool = True) -> dict:
         params = dict(temperature=0.6, max_tokens=settings.ollama_num_predict)
 
         messages = [{'role': 'user', 'content': prompt}]
-        response = await ask_llm(messages, VacancyEvaluation, **params)
+        response = await ask_llm(messages, VacancyEvaluation, **params, name="evaluate")
         raw_content = response.text
         result, parsed_by = parse_evaluation(raw_content)
 
@@ -418,7 +458,7 @@ async def evaluate_and_draft(vacancy_data: dict, guard: bool = True) -> dict:
                 )},
             ]
             try:
-                retry_response = await ask_llm(retry_messages, VacancyEvaluation, **params)
+                retry_response = await ask_llm(retry_messages, VacancyEvaluation, **params, name="evaluate_retry")
                 retry_result, retry_parsed_by = parse_evaluation(retry_response.text)
                 if retry_parsed_by != "regex":
                     result, parsed_by = retry_result, retry_parsed_by
@@ -489,7 +529,7 @@ async def generate_answers_for_questions(questions: list, vacancy_data: dict) ->
 
     try:
         print(f"[LLM] Генерация ответов на {len(questions)} вопросов...")
-        response = await ask_llm([{'role': 'user', 'content': prompt}], temperature=0.3)
+        response = await ask_llm([{'role': 'user', 'content': prompt}], temperature=0.3, name="answer_questions")
         raw_content = response.text
         match = re.search(r'\[.*\]', raw_content, re.DOTALL)
         json_str = match.group(0) if match else raw_content
@@ -510,7 +550,8 @@ async def generate_answers_for_questions(questions: list, vacancy_data: dict) ->
 async def generate_short_answer(prompt: str, fallback: str) -> str:
     """Короткий ответ на вопрос анкеты работодателя (1-2 предложения) моделью из .env."""
     try:
-        response = await ask_llm([{'role': 'user', 'content': prompt}], temperature=0.3, max_tokens=150)
+        response = await ask_llm([{'role': 'user', 'content': prompt}], temperature=0.3, max_tokens=150,
+                                 name="short_answer")
         answer = response.text.strip()
         if answer.startswith('"') and answer.endswith('"'):
             answer = answer[1:-1]

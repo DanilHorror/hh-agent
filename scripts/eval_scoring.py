@@ -178,4 +178,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if args.no_company_filter:
         brain.APPLY_COMPANY_FILTER = False
-    sys.exit(asyncio.run(main(args.providers, args.rerun, args.tag)))
+    code = asyncio.run(main(args.providers, args.rerun, args.tag))
+    from llm import tracing
+    tracing.flush()   # дослать трассы в Langfuse, если включён
+    sys.exit(code)

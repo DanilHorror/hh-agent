@@ -45,4 +45,7 @@ if __name__ == "__main__":
     parser.add_argument("-k", type=int, default=6, help="сколько фрагментов отдать модели")
     parser.add_argument("--search-only", action="store_true", help="только поиск, без ответа LLM")
     args = parser.parse_args()
-    sys.exit(asyncio.run(main(args.question, args.mode, args.k, args.search_only)))
+    code = asyncio.run(main(args.question, args.mode, args.k, args.search_only))
+    from llm import tracing
+    tracing.flush()
+    sys.exit(code)

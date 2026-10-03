@@ -102,6 +102,10 @@ class Settings(BaseSettings):
     letter_guard: bool = Field(default=True, alias="LETTER_GUARD")
     # Защита от мусора и prompt injection в тексте вакансий (llm/safety.py)
     input_defense: bool = Field(default=True, alias="INPUT_DEFENSE")
+    # Langfuse (docker-compose.langfuse.yml): пустые ключи — трассировка выключена
+    langfuse_public_key: str = Field(default="", alias="LANGFUSE_PUBLIC_KEY")
+    langfuse_secret_key: str = Field(default="", alias="LANGFUSE_SECRET_KEY")
+    langfuse_host: str = Field(default="http://localhost:3000", alias="LANGFUSE_HOST")
     letter_judge_provider: str = Field(default="gigachat", alias="LETTER_JUDGE_PROVIDER")
     letter_guard_rounds: int = Field(default=2, alias="LETTER_GUARD_ROUNDS")
 
