@@ -187,6 +187,9 @@ class TelegramNotifier:
             f"<i>(тапните по тексту, чтобы скопировать)</i>\n"
             f"<pre><code>{html.escape(cover_letter)}</code></pre>"
         )
+        warning = llm_result.get('letter_warning')
+        if warning:
+            text += f"\n⚠️ <b>Проверьте письмо.</b> {html.escape(warning)}"
 
         # Кнопка с прямой ссылкой на вакансию
         rows = []

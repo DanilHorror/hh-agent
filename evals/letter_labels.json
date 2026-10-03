@@ -761,5 +761,348 @@
     "тестирование толстого клиента"
    ]
   }
+ },
+ "ollama-letters-v2-guard": {
+  "137244722": {
+   "invented": false,
+   "facts": []
+  },
+  "136450188": {
+   "invented": false,
+   "facts": []
+  },
+  "137343141": {
+   "invented": true,
+   "facts": [
+    "опыт QA более 5 лет (в резюме 3 года 10 месяцев)"
+   ]
+  },
+  "134845170": {
+   "invented": false,
+   "facts": []
+  },
+  "137431426": {
+   "invented": false,
+   "facts": []
+  },
+  "137515851": {
+   "invented": true,
+   "facts": [
+    "опыт сетевого тестирования и анализа производительности"
+   ]
+  },
+  "129586923": {
+   "invented": true,
+   "facts": [
+    "5 лет опыта QA (в резюме 3 года 10 месяцев)"
+   ]
+  },
+  "136909870": {
+   "invented": false,
+   "facts": []
+  },
+  "134044787": {
+   "invented": false,
+   "facts": []
+  },
+  "137339746": {
+   "invented": false,
+   "facts": []
+  },
+  "136897400": {
+   "invented": true,
+   "facts": [
+    "работа с системами на C/C++"
+   ]
+  },
+  "137476566": {
+   "invented": false,
+   "facts": []
+  },
+  "137500512": {
+   "invented": false,
+   "facts": []
+  },
+  "136586722": {
+   "invented": false,
+   "facts": []
+  },
+  "137006864": {
+   "invented": false,
+   "facts": []
+  },
+  "135031592": {
+   "invented": false,
+   "facts": []
+  },
+  "137312587": {
+   "invented": false,
+   "facts": []
+  },
+  "137380702": {
+   "invented": false,
+   "facts": []
+  },
+  "132584216": {
+   "invented": false,
+   "facts": []
+  },
+  "137300476": {
+   "invented": false,
+   "facts": []
+  },
+  "137321307": {
+   "invented": false,
+   "facts": []
+  },
+  "136638570": {
+   "invented": true,
+   "facts": [
+    "опыт системного и сетевого тестирования"
+   ]
+  },
+  "137213688": {
+   "invented": false,
+   "facts": []
+  },
+  "135192630": {
+   "invented": false,
+   "facts": []
+  },
+  "135704370": {
+   "invented": false,
+   "facts": []
+  },
+  "136609487": {
+   "invented": false,
+   "facts": []
+  },
+  "137340055": {
+   "invented": false,
+   "facts": []
+  },
+  "137423056": {
+   "invented": true,
+   "facts": [
+    "знаком с Pytest"
+   ]
+  },
+  "136478654": {
+   "invented": false,
+   "facts": []
+  },
+  "137247673": {
+   "invented": false,
+   "facts": []
+  },
+  "135417116": {
+   "invented": false,
+   "facts": []
+  },
+  "136197859": {
+   "invented": false,
+   "facts": []
+  },
+  "136742628": {
+   "invented": true,
+   "facts": [
+    "Jenkins"
+   ]
+  },
+  "136529472": {
+   "invented": false,
+   "facts": []
+  },
+  "137454298": {
+   "invented": false,
+   "facts": []
+  },
+  "136456809": {
+   "invented": false,
+   "facts": []
+  },
+  "136306982": {
+   "invented": false,
+   "facts": []
+  },
+  "137433305": {
+   "invented": false,
+   "facts": []
+  },
+  "136527384": {
+   "invented": false,
+   "facts": []
+  }
+ },
+ "gigachat-letters-v2-guard": {
+  "137244722": {
+   "invented": false,
+   "facts": []
+  },
+  "136450188": {
+   "invented": false,
+   "facts": []
+  },
+  "137343141": {
+   "invented": false,
+   "facts": []
+  },
+  "134845170": {
+   "invented": false,
+   "facts": []
+  },
+  "137431426": {
+   "invented": true,
+   "facts": [
+    "тестирование решений «в железе»"
+   ]
+  },
+  "137515851": {
+   "invented": false,
+   "facts": []
+  },
+  "129586923": {
+   "invented": true,
+   "facts": [
+    "Agile-процессы"
+   ]
+  },
+  "136909870": {
+   "invented": true,
+   "facts": [
+    "автоматизировал более 40 UI-сценариев на Java и Python (Playwright)",
+    "BrowserStack"
+   ]
+  },
+  "134044787": {
+   "invented": false,
+   "facts": []
+  },
+  "137339746": {
+   "invented": false,
+   "facts": []
+  },
+  "136897400": {
+   "invented": false,
+   "facts": []
+  },
+  "137476566": {
+   "invented": false,
+   "facts": []
+  },
+  "137500512": {
+   "invented": false,
+   "facts": []
+  },
+  "136586722": {
+   "invented": false,
+   "facts": []
+  },
+  "137006864": {
+   "invented": false,
+   "facts": []
+  },
+  "135031592": {
+   "invented": false,
+   "facts": []
+  },
+  "137312587": {
+   "invented": true,
+   "facts": [
+    "работа с микросервисами"
+   ]
+  },
+  "137380702": {
+   "invented": false,
+   "facts": []
+  },
+  "132584216": {
+   "invented": false,
+   "facts": []
+  },
+  "137300476": {
+   "invented": false,
+   "facts": []
+  },
+  "137321307": {
+   "invented": false,
+   "facts": []
+  },
+  "136638570": {
+   "invented": false,
+   "facts": []
+  },
+  "137213688": {
+   "invented": false,
+   "facts": []
+  },
+  "135192630": {
+   "invented": false,
+   "facts": []
+  },
+  "135704370": {
+   "invented": false,
+   "facts": []
+  },
+  "136609487": {
+   "invented": false,
+   "facts": []
+  },
+  "137340055": {
+   "invented": true,
+   "facts": [
+    "опыт проектов с высокой нагрузкой"
+   ]
+  },
+  "137423056": {
+   "invented": false,
+   "facts": []
+  },
+  "136478654": {
+   "invented": false,
+   "facts": []
+  },
+  "137247673": {
+   "invented": false,
+   "facts": []
+  },
+  "135417116": {
+   "invented": false,
+   "facts": []
+  },
+  "136197859": {
+   "invented": false,
+   "facts": []
+  },
+  "136742628": {
+   "invented": false,
+   "facts": []
+  },
+  "136529472": {
+   "invented": false,
+   "facts": []
+  },
+  "137454298": {
+   "invented": false,
+   "facts": []
+  },
+  "136456809": {
+   "invented": false,
+   "facts": []
+  },
+  "136306982": {
+   "invented": false,
+   "facts": []
+  },
+  "137433305": {
+   "invented": false,
+   "facts": []
+  },
+  "136527384": {
+   "invented": true,
+   "facts": [
+    "тестирование толстого клиента"
+   ]
+  }
  }
 }

@@ -98,6 +98,10 @@ class Settings(BaseSettings):
     max_vacancies_per_cycle: int = Field(default=10, alias="MAX_VACANCIES_PER_CYCLE")
     freshness_days: int = Field(default=3, alias="FRESHNESS_DAYS")
     min_relevance_score: int = Field(default=60, alias="MIN_RELEVANCE_SCORE")
+    # Страж письма: судья проверяет черновик на выдумки, модель исправляет (не больше LETTER_GUARD_ROUNDS раз)
+    letter_guard: bool = Field(default=True, alias="LETTER_GUARD")
+    letter_judge_provider: str = Field(default="gigachat", alias="LETTER_JUDGE_PROVIDER")
+    letter_guard_rounds: int = Field(default=2, alias="LETTER_GUARD_ROUNDS")
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

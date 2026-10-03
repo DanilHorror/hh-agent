@@ -65,7 +65,8 @@ async def run_provider(name: str, items: list[dict], rerun: bool, tag: str = "")
         for n, item in enumerate(todo, start=1):
             started = time.time()
             result = await brain.evaluate_and_draft(
-                {"title": item["title"], "company": item["company"], "description": item["description"]})
+                {"title": item["title"], "company": item["company"], "description": item["description"]},
+                guard=False)   # страж проверяется отдельно: scripts/eval_guard.py
             results[item["vacancy_id"]] = {
                 "score": result.get("relevance_score", 0), "error": bool(result.get("error")),
                 "seconds": round(time.time() - started, 2), "reasoning": result.get("reasoning", ""),

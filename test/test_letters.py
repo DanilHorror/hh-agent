@@ -22,7 +22,8 @@ def test_good_letter_passes():
 def test_cliches_found():
     text = GOOD + " Хочу внести свой вклад и соответствовать высоким стандартам. Буду рад обсудить детали."
     found = letters.check_letter(text, "Данил", "Захаров")["cliche"]
-    assert {"внести вклад", "высокие стандарты", "буду рад обсудить"} <= set(found)
+    assert {"внести вклад", "высокие стандарты"} <= set(found)
+    assert "буду рад обсудить" not in found   # обычная концовка письма, не штамп
 
 
 def test_not_only_but_also():

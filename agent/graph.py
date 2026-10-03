@@ -33,6 +33,7 @@ class VacancyState(TypedDict, total=False):
     score: int
     reasoning: str
     cover_letter: str
+    letter_warning: str     # что страж письма не смог исправить (пусто — письмо чистое)
     revisions: int          # сколько раз письмо переписывали
     decision: str           # approve | rewrite | skip — последнее решение человека
     feedback: str           # замечание к письму
@@ -46,7 +47,7 @@ class AgentDeps:
     notify: Callable[[VacancyState], Awaitable[None]]                  # отправить черновик с кнопками
     set_status: Callable[..., Awaitable[None]]                         # (vacancy_id, status_name, **поля)
     record_decision: Callable[..., Awaitable[None]]                    # (vacancy_id, decision, feedback, score, revision)
-    rewrite: Callable[[dict, str, str], Awaitable[str]]                # (vacancy, письмо, замечание) → новое письмо
+    rewrite: Callable[[dict, str, str], Awaitable]                     # (vacancy, письмо, замечание) → письмо или (письмо, предупреждение)
     min_score: int = 60
 
 
@@ -60,7 +61,8 @@ def build_graph(deps: AgentDeps, checkpointer=None):
         logger.info(f"Оценка вакансии {vacancy['vacancy_id']}: {result['relevance_score']}/100")
         # outcome сбрасываем: поток вакансии мог остаться от прошлой попытки, закончившейся ошибкой
         return {"score": int(result["relevance_score"]), "reasoning": result.get("reasoning", ""),
-                "cover_letter": result.get("cover_letter", ""), "revisions": 0, "outcome": "",
+                "cover_letter": result.get("cover_letter", ""), "letter_warning": result.get("letter_warning", ""),
+                "revisions": 0, "outcome": "",
                 "decision": "", "feedback": ""}
 
     def route_after_evaluate(state: VacancyState) -> str:
@@ -109,8 +111,9 @@ def build_graph(deps: AgentDeps, checkpointer=None):
     async def rewrite(state: VacancyState) -> dict:
         vacancy_id = state["vacancy"]["vacancy_id"]
         await deps.record_decision(vacancy_id, "rewrite", state["feedback"], state["score"], state.get("revisions", 0))
-        letter = await deps.rewrite(state["vacancy"], state["cover_letter"], state["feedback"])
-        return {"cover_letter": letter, "revisions": state.get("revisions", 0) + 1}
+        out = await deps.rewrite(state["vacancy"], state["cover_letter"], state["feedback"])
+        letter, warning = out if isinstance(out, tuple) else (out, "")
+        return {"cover_letter": letter, "letter_warning": warning, "revisions": state.get("revisions", 0) + 1}
 
     builder = StateGraph(VacancyState)
     builder.add_node("evaluate", evaluate)
