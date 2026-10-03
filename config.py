@@ -100,6 +100,8 @@ class Settings(BaseSettings):
     min_relevance_score: int = Field(default=60, alias="MIN_RELEVANCE_SCORE")
     # Страж письма: судья проверяет черновик на выдумки, модель исправляет (не больше LETTER_GUARD_ROUNDS раз)
     letter_guard: bool = Field(default=True, alias="LETTER_GUARD")
+    # Защита от мусора и prompt injection в тексте вакансий (llm/safety.py)
+    input_defense: bool = Field(default=True, alias="INPUT_DEFENSE")
     letter_judge_provider: str = Field(default="gigachat", alias="LETTER_JUDGE_PROVIDER")
     letter_guard_rounds: int = Field(default=2, alias="LETTER_GUARD_ROUNDS")
 
