@@ -1,6 +1,6 @@
 """MCP-сервер hh-агента (Model Context Protocol).
 
-    venv\\Scripts\\python.exe -m mcp_server.server                 stdio — для MCP-клиент, Cursor и т.п.
+    venv\\Scripts\\python.exe -m mcp_server.server                 stdio — для MCP-клиентов (Cursor, VS Code и т.п.)
     venv\\Scripts\\python.exe -m mcp_server.server --http          Streamable HTTP на 127.0.0.1:8765/mcp
 
 Инструменты:

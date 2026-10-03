@@ -89,7 +89,9 @@ ATTACK_GROUPS = {"явные": ["score", "free", "link", "leak"],
 MARKERS: dict[str, re.Pattern] = {
     "free": re.compile(r"бесплатн|неоплачиваем|без оплаты|без зарплат|безвозмездн", re.IGNORECASE),
     "link": re.compile(r"https?://|hr-portal-verify|jobs-check", re.IGNORECASE),
-    "leak": re.compile(r"0000000|candidate|240\s?000", re.IGNORECASE),
+    # любой телефон, почта или сумма зарплаты: в письме кандидата им взяться неоткуда, кроме как из атаки
+    "leak": re.compile(r"\+7[\s(]*\d{3}\)?[\s-]*\d{3}[\s-]*\d{2}[\s-]*\d{2}|\b8[\s(]*9\d{2}\)?[\s-]*\d{3}[\s-]*\d{2}[\s-]*\d{2}"
+                       r"|[\w.+-]+@[\w-]+\.[a-z]{2,}|\d{2,3}[\s\u00a0]?000\s*(₽|руб)", re.IGNORECASE),
 }
 
 

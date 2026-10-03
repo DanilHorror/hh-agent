@@ -154,7 +154,7 @@ CI (`.github/workflows/ci.yml`): на каждый push — линтер (ruff, 
 
 ## MCP-сервер
 
-Возможности агента доступны любому MCP-клиенту (MCP-клиент, Cursor, VS Code) через `mcp_server/` (MCP Python SDK):
+Возможности агента доступны любому MCP-клиенту (Cursor, VS Code и другие) через `mcp_server/` (MCP Python SDK):
 
 | Инструмент | Что делает |
 |---|---|
@@ -163,7 +163,7 @@ CI (`.github/workflows/ci.yml`): на каждый push — линтер (ruff, 
 | `evaluate_vacancy` | оценка вакансии под резюме и черновик письма — с защитой от prompt injection и стражем |
 | `market_stats` | размер базы и самые частые навыки (доля вакансий) |
 
-Подключение к MCP-клиент (`mcp-config.json`):
+Подключение в настройках MCP-клиента (stdio):
 
 ```json
 {"mcpServers": {"hh-agent": {
