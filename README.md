@@ -1,8 +1,26 @@
 # hh-agent — агент поиска работы с LLM-оценкой вакансий
 
+[![CI](https://github.com/DanilHorror/hh-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/DanilHorror/hh-agent/actions/workflows/ci.yml)
+![Python 3.12](https://img.shields.io/badge/python-3.12-blue)
+![LangGraph](https://img.shields.io/badge/agent-LangGraph-green)
+![MCP](https://img.shields.io/badge/MCP-server-purple)
+
 Агент мониторит новые вакансии на hh.ru и Habr Career, оценивает их соответствие резюме с помощью LLM и присылает в Telegram черновик сопроводительного письма с кнопками «Подходит / Переписать / Пропустить» (агент на LangGraph). Откликается человек сам. По собранным текстам вакансий работает RAG: вопросы о рынке с ответом со ссылками на конкретные вакансии — в Telegram, через HTTP API (FastAPI) и на демо-странице.
 
 ![Демо-страница: вопрос о рынке вакансий с ответом и ссылками на вакансии](docs/demo.png)
+
+### Главное в цифрах
+
+Всё измерено на собственных размеченных наборах; скрипты замеров лежат в `scripts/`, сырые результаты — в `evals/`.
+
+| Что | Результат |
+|---|---|
+| Поиск по 546 вакансиям (RAG, 40 вопросов) | гибрид + реранкер: Hit@5 **0.93**, MRR **0.86** (только векторы — 0.82 / 0.70) |
+| Оценка вакансий под резюме (50 размеченных) | AUC **0.39 → 0.71–0.75** за счёт критериев кандидата в промпте |
+| Выдуманные факты в сопроводительных письмах (ручная разметка) | GigaChat **44% → 15%** (правило в промпте + страж письма с LLM-судьёй) |
+| LLM-судья выдумок | recall **32% → 67–76%** (проверка каждого утверждения вместо общего вердикта) |
+| Prompt injection в текстах вакансий (88 атак) | успешных атак **50–64% → 0%** без потери качества отбора (F1 0.82–0.88) |
+| Инфраструктура | 115 тестов в CI, Docker, MCP-сервер, трассы в self-hosted Langfuse |
 
 ## Архитектура
 
@@ -195,7 +213,7 @@ docker compose -f docker-compose.langfuse.yml -p langfuse up -d     # интер
 
 ## Стек
 
-Python · asyncio · Playwright · PostgreSQL · pgvector · SQLAlchemy (async) · Alembic · Docker Compose · LangGraph · FastAPI · Streamlit · sentence-transformers (USER-bge-m3, bge-reranker-v2-m3) · Pydantic · Ollama · GigaChat API · YandexGPT API · httpx · aiogram · pytest
+Python · asyncio · Playwright · PostgreSQL · pgvector · SQLAlchemy (async) · Alembic · Docker Compose · LangGraph · FastAPI · Streamlit · sentence-transformers (USER-bge-m3, bge-reranker-v2-m3) · Pydantic · Ollama · GigaChat API · YandexGPT API · httpx · aiogram · pytest · MCP Python SDK · Langfuse · ruff · GitHub Actions
 
 ## Запуск
 
